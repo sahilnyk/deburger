@@ -1,22 +1,20 @@
 # 🍔 deburger
 
-An AI-powered debugging tool that automatically finds, fixes, and validates bugs in your code. No more staring at stack traces at 3 AM.
+AI-powered debugging tool that finds bugs, fixes them, and creates pull requests automatically.
 
 ## What is deburger?
 
-Look, we've all been there. You run your tests, they fail, you spend 2 hours debugging, only to realize you forgot a `!=` instead of `==`. Or worse, a sneaky zero division error that only happens in production.
+You know when your tests fail and you spend hours debugging only to find it was something stupid? Yeah, that.
 
-**deburger** is your debugging companion that detects errors automatically, uses AI to generate fixes, validates them by running your test suite, and creates pull requests with the fix. It caches successful fixes so you never pay for the same bug twice.
+deburger runs your tests, catches the failures, sends the error to an AI (GPT-4, Claude, or local Llama), gets back a fix, validates it actually works, and creates a PR. It also caches fixes so the same bug costs you nothing next time.
 
-It's like having a senior engineer who's really good at debugging, but they work for pennies and never get tired.
+Basically stops you from debugging the same TypeError for the 50th time.
 
 ## Why I built this
 
-I got tired of fixing the same stupid bugs over and over again. Like, why am I manually debugging a `KeyError` for the 47th time this month? Why can't the computer just fix it?
+Got tired of manually fixing bugs that could easily be automated. Last month I spent an entire afternoon tracking down a KeyError that turned out to be a typo in a dictionary key. The error message literally told me what was wrong but I still had to manually write the fix, test it, commit it, and create a PR.
 
-So I rage-built **deburger** after spending 4 hours debugging a test that failed because I used `x = y` instead of `x == y`. True story. Never again.
-
-Now when my tests fail, I just run `deburger run` and go grab a coffee. By the time I'm back, there's a PR waiting with the fix.
+Felt like a waste of time so I built this. Now when tests fail I just let deburger handle it while I do something more interesting.
 
 ## Features
 
