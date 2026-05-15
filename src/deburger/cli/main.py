@@ -1,5 +1,6 @@
 """Main CLI entry point for deburger."""
 
+import asyncio
 import typer
 from rich.console import Console
 
@@ -18,8 +19,13 @@ def run(
     dry_run: bool = typer.Option(False, "--dry-run", help="Show fixes without applying"),
 ):
     """Run tests and auto-debug failures."""
-    console.print("🍔 [bold]deburger[/bold] v0.1.0")
-    console.print("\nFeature coming soon! Still cooking...")
+    from deburger.cli.run_command import run_debug_workflow
+
+    asyncio.run(run_debug_workflow(
+        test_path=test_path,
+        dry_run=dry_run,
+        no_pr=no_pr,
+    ))
 
 
 @app.command()
