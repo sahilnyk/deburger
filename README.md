@@ -1,53 +1,15 @@
 # 🍔 deburger
 
-**AI Code Quality Guardian** - Monitor how AI changes your code, track requirement alignment, and catch vulnerabilities.
+**AI Code Quality Guardian** - Monitor AI-generated code, track requirements, catch vulnerabilities.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 ## What is deburger?
 
-When you use AI to generate code, you get changes fast but lose visibility into quality, security, and requirement alignment. deburger solves this.
+When AI generates code, you get changes fast but lose visibility. Did it solve your problem? Introduce XSS? Are you 60% done or 95%?
 
-It analyzes each AI-generated change, runs comprehensive tests, checks security vulnerabilities, measures requirement adherence, and guides the AI back on track when it drifts.
-
-Think of it as a production-grade quality gate for AI-assisted development.
-
-## Why this exists
-
-AI generates code fast. Too fast. You paste a prompt, get 200 lines back, and hope it's correct.
-
-But did it actually solve your problem? Did it introduce XSS? Is it 60% toward the requirement or 95%? You don't know until something breaks.
-
-deburger gives you metrics, security analysis, and requirement tracking in real-time. No more blind trust.
-
-## Core Features
-
-| Feature | Description |
-|---------|-------------|
-| **Requirement Tracking** | Measures how each AI change moves toward your actual goal (0-100% completion) |
-| **Security Analysis** | Detects OWASP Top 10 vulnerabilities, hardcoded secrets, unsafe patterns |
-| **Test Generation** | Creates unit, integration, and edge-case tests automatically |
-| **Metrics Dashboard** | Code quality score, complexity, coverage, performance benchmarks |
-| **AI Guidance** | Provides guardrails and prompts to steer AI back on track |
-| **Zero Dependencies** | Pure Python stdlib where possible, minimal external deps |
-| **LLM Agnostic** | Works with any LLM via API (OpenAI, Anthropic, Ollama, etc.) |
-
-## How it works
-
-```bash
-# 1. Define your requirement
-deburger init --requirement "Build REST API with auth"
-
-# 2. Let AI generate code (use any tool/LLM)
-
-# 3. Run deburger to analyze changes
-deburger analyze --since HEAD~3
-
-# Output:
-# ✓ Requirement Progress: 67% → 82% (+15%)
-# ⚠ Security Issues: 2 found (SQL injection, hardcoded secret)
-# ✓ Tests Generated: 12 unit, 3 integration
-# ✓ Code Quality: 87/100 (+5)
-# → AI Guidance: Focus on input validation next
-```
+deburger answers these questions. It analyzes each commit, tracks requirement progress (0-100%), detects vulnerabilities, and guides AI back on track when it drifts.
 
 ## Installation
 
@@ -55,48 +17,98 @@ deburger analyze --since HEAD~3
 pip install deburger
 ```
 
-Or from source:
+From source:
 ```bash
 git clone https://github.com/sahilnyk/deburger.git
 cd deburger
-poetry install
-deburger --version
+pip install -e .
+```
+
+With LLM support:
+```bash
+pip install deburger[llm]
 ```
 
 ## Quick Start
 
 ```bash
-# Initialize project
-deburger init
+# Initialize
+🍔 deburger init --requirement "Build REST API with JWT auth"
 
-# Analyze recent changes
-deburger analyze
+# Make changes with AI (ChatGPT, Claude, etc.)
 
-# Run with custom prompts/guardrails
-deburger analyze --config .deburger.yml
+# Analyze
+🍔 deburger analyze
 
-# Generate report
-deburger report --format html
+# Output:
+# ✓ Progress: 67% → 82% (+15%)
+# ⚠ Security: 2 issues (SQL injection, hardcoded secret)
+# ✓ Tests: 12 generated
+# ✓ Quality: 87/100
 ```
 
-## Security Features
+## Commands
 
+| Command | Description |
+|---------|-------------|
+| `deburger init` | Initialize project configuration |
+| `deburger analyze` | Analyze recent code changes |
+| `deburger security` | Run security vulnerability scan |
+| `deburger guide` | Get AI guidance for next steps |
+| `deburger report` | Generate metrics report |
+| `deburger config` | Configure settings |
+
+## Features
+
+**Requirement Tracking**
+- Break down goals into measurable sub-goals
+- Track completion percentage per commit
+- Evidence-based progress scoring
+- Next focus suggestions
+
+**Security Scanning**
 - SQL injection detection
 - XSS vulnerability scanning
 - Hardcoded credentials finder
-- Unsafe deserialization checks
-- Path traversal detection
 - Command injection patterns
-- Insecure random usage
-- No jailbreak attempts (guardrails enforced)
+- Unsafe deserialization checks
 
-## Requirement Tracking
+**Quality Metrics**
+- Cyclomatic complexity
+- Maintainability index
+- Code quality score (0-100)
+- Lines of code tracking
 
-deburger breaks down your high-level requirement into measurable sub-goals:
+**AI Steering**
+- Generate actionable guidance prompts
+- Enforce guardrails (no jailbreak)
+- Focus area determination
+- LLM-ready prompt formatting
+
+**Test Generation**
+- Automatic unit test creation
+- Edge case test generation
+- Integration test scaffolding
+
+## Usage Example
+
+```python
+# Monitor functions with decorators
+from deburger.decorators import deburger, security_check
+
+@deburger(requirement="Handle authentication", security=True)
+@security_check(fail_on_issues=True)
+def authenticate_user(username: str, password: str):
+    # Function is monitored automatically
+    return jwt.encode({"user": username}, secret)
+```
+
+## Configuration
+
+Create `.deburger.yml`:
 
 ```yaml
-# .deburger.yml
-requirement: "Build REST API with JWT auth"
+requirement: "Build REST API with authentication"
 
 sub_goals:
   - id: endpoints
@@ -109,18 +121,9 @@ sub_goals:
     description: "Add input validation"
     weight: 20
   - id: tests
-    description: "Write comprehensive tests"
+    description: "Write tests"
     weight: 10
-```
 
-Each commit is scored against these goals to show real progress.
-
-## LLM Integration
-
-Configure your LLM provider:
-
-```yaml
-# .deburger.yml
 llm:
   provider: openai
   api_key: ${OPENAI_API_KEY}
@@ -129,110 +132,111 @@ llm:
   guardrails:
     - "Never disable security features"
     - "Always validate user input"
-    - "Prefer explicit over implicit"
-  
-  prompts:
-    guidance: |
-      You are {progress}% toward the goal.
-      Next focus: {next_focus}
-      Security issues: {security_count}
+    - "No hardcoded credentials"
+
+security:
+  enabled: true
+  fail_on_high: true
+
+metrics:
+  min_quality_score: 70
+  max_complexity: 10
 ```
 
-## Commands
-
-```bash
-deburger init                    # Initialize project config
-deburger analyze                 # Analyze recent changes
-deburger analyze --since HASH    # Analyze from specific commit
-deburger test                    # Generate and run tests
-deburger security                # Run security scan
-deburger report                  # Generate metrics report
-deburger guide                   # Get AI guidance
-deburger config                  # Configure settings
-```
-
-## Example Output
+## CLI Output Example
 
 ```
-🍔 deburger analysis
+🍔 deburger analyze
 
-Requirement: Build REST API with JWT auth
-Progress: 67% → 82% (+15%)
+Files: 3 | +456 -12
 
-Changes analyzed: 3 commits, 456 lines
-├─ endpoints: 85% complete ✓
-├─ auth: 78% complete ↑
-├─ validation: 45% complete ⚠
-└─ tests: 92% complete ✓
+┌─ 📊 Requirement Progress ─────┐
+│ Build REST API with JWT auth  │
+│ ████████████░░░░░░░░ 67%      │
+└────────────────────────────────┘
 
-Security Issues (2):
-├─ HIGH: SQL injection in user_query() (api.py:45)
-└─ MED: Hardcoded API key (config.py:12)
+Sub-Goals Progress
+┌────────────────────┬──────────┬────────┐
+│ Goal               │ Progress │ Status │
+├────────────────────┼──────────┼────────┤
+│ CRUD endpoints     │ 85%      │   ✓    │
+│ JWT auth           │ 78%      │   ↑    │
+│ Input validation   │ 45%      │   ⚠    │
+│ Tests              │ 92%      │   ✓    │
+└────────────────────┴──────────┴────────┘
 
-Tests Generated: 12 unit, 3 integration
-Code Quality: 87/100 (+5 from last run)
+🔒 Security (2 issues)
+├─ HIGH: SQL injection in user_query() (line 45)
+│  → Use parameterized queries
+└─ HIGH: Hardcoded API key (line 12)
+   → Move to environment variables
 
-AI Guidance:
-→ Focus on input validation for query parameters
-→ Move API keys to environment variables
-→ Add rate limiting to prevent abuse
+📈 Code Quality: 87/100
 
-Next Steps:
-1. Fix security issues (deburger fix)
-2. Run generated tests (pytest tests/)
-3. Continue with validation logic
+🤖 Next Focus: Add input validation for query parameters
 ```
+
+## Use Cases
+
+**Monitor AI Code Generation**
+Track quality as AI writes code in real-time
+
+**Requirement Alignment**
+Ensure code matches actual goals, not what AI thinks
+
+**Security Gate**
+Block merges with critical vulnerabilities
+
+**Progress Tracking**
+Quantify completion instead of guessing
+
+**AI Guidance**
+Steer LLM back on track when it drifts
 
 ## Architecture
 
 ```
 deburger/
-├── analyzer/          # Code change analysis
-├── requirements/      # Requirement tracking
-├── security/          # Security scanners
-├── testing/           # Test generation
-├── metrics/           # Quality metrics
-├── guidance/          # AI steering logic
-└── llm/              # LLM integration
+├── analyzer/       Code change analysis
+├── security/       Vulnerability detection
+├── metrics/        Quality calculation
+├── requirements/   Progress tracking
+├── guidance/       AI steering
+├── testing/        Test generation
+├── llm/           LLM integration
+├── decorators/     Function monitoring
+└── ui/            Beautiful CLI output
 ```
-
-## Design Principles
-
-- **Zero trust AI** - Verify every change
-- **Metrics over feelings** - Quantify everything
-- **Security first** - Scan before merge
-- **Minimal deps** - Use stdlib when possible
-- **Clean code** - No AI-generated comments
-- **Fast** - Results in seconds, not minutes
-
-## Algorithms
-
-- **Requirement matching**: TF-IDF + semantic similarity
-- **Security scanning**: Pattern matching + AST analysis
-- **Complexity**: Cyclomatic complexity + cognitive complexity
-- **Test generation**: Coverage-guided fuzzing + boundary analysis
 
 ## Development
 
 ```bash
-git clone https://github.com/sahilnyk/deburger.git
-cd deburger
-poetry install
-poetry run pytest
-poetry run ruff check src/
-poetry run mypy src/
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Lint
+ruff check src/
+
+# Format
+black src/
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
-MIT - See LICENSE file
+MIT - See [LICENSE](LICENSE)
 
 ## Author
 
-**Sahil Nayak**  
-GitHub: [@sahilnyk](https://github.com/sahilnyk)  
-Email: [sahilnayak2056@gmail.com](mailto:sahilnayak2056@gmail.com)
+**Sahil Nayak**
 
----
+GitHub: [@sahilnyk](https://github.com/sahilnyk)  
+Email: sahilnayak2056@gmail.com
 
 Built because AI generates code fast, but someone needs to check its work.

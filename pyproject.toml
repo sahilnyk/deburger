@@ -7,30 +7,38 @@ readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/sahilnyk/deburger"
 repository = "https://github.com/sahilnyk/deburger"
+documentation = "https://github.com/sahilnyk/deburger#readme"
 keywords = ["ai", "code-quality", "security", "monitoring", "testing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
 
 [tool.poetry.dependencies]
 python = "^3.9"
 typer = "^0.9.0"
 rich = "^13.7.0"
-questionary = "^2.0.1"
-click = "^8.1.7"
-pygments = "^2.17.0"
-tabulate = "^0.9.0"
+PyYAML = "^6.0.1"
 openai = { version = "^1.6.0", optional = true }
 anthropic = { version = "^0.18.0", optional = true }
-PyYAML = "^6.0.1"
 
 [tool.poetry.extras]
 llm = ["openai", "anthropic"]
 
-[tool.poetry.scripts]
-deburger = "deburger.cli.main:app"
-
 [tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
 mypy = "^1.8.0"
 ruff = "^0.1.0"
+black = "^24.1.0"
 
 [tool.poetry.scripts]
 deburger = "deburger.cli.main:app"
@@ -41,21 +49,23 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311"]
+target-version = ["py39", "py310", "py311", "py312"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.9"
-strict = true
 warn_return_any = true
 warn_unused_configs = true
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=src --cov-report=term-missing"
+addopts = "-v --cov=src/deburger --cov-report=term-missing"

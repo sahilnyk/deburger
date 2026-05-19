@@ -8,12 +8,17 @@ readme = Path("README.md").read_text(encoding="utf-8")
 setup(
     name="deburger",
     version="0.2.0",
-    description="AI Code Quality Guardian - Monitor AI-generated code quality and requirement alignment",
+    description="AI Code Quality Guardian - Monitor AI-generated code quality",
     long_description=readme,
     long_description_content_type="text/markdown",
     author="Sahil Nayak",
     author_email="sahilnayak2056@gmail.com",
     url="https://github.com/sahilnyk/deburger",
+    project_urls={
+        "Bug Tracker": "https://github.com/sahilnyk/deburger/issues",
+        "Documentation": "https://github.com/sahilnyk/deburger#readme",
+        "Source Code": "https://github.com/sahilnyk/deburger",
+    },
     license="MIT",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
@@ -25,7 +30,13 @@ setup(
     ],
     extras_require={
         "llm": ["openai>=1.6.0", "anthropic>=0.18.0"],
-        "dev": ["pytest>=7.4.0", "pytest-cov>=4.1.0", "mypy>=1.8.0", "ruff>=0.1.0"],
+        "dev": [
+            "pytest>=7.4.0",
+            "pytest-cov>=4.1.0",
+            "mypy>=1.8.0",
+            "ruff>=0.1.0",
+            "black>=24.1.0",
+        ],
     },
     entry_points={
         "console_scripts": [
@@ -43,6 +54,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Quality Assurance",
         "Topic :: Software Development :: Testing",
+        "Topic :: Security",
     ],
-    keywords="ai code-quality security monitoring testing",
+    keywords="ai code-quality security monitoring testing vulnerability-detection",
 )
