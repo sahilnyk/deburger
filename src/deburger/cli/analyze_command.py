@@ -5,11 +5,10 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.markdown import Markdown
 
-from deburger.analyzer.diff_analyzer import DiffAnalyzer
-from deburger.security.scanner import SecurityScanner
-from deburger.metrics.calculator import MetricsCalculator
-from deburger.requirements.tracker import RequirementTracker, Requirement, SubGoal
+from deburger.orchestrator import DeburgerOrchestrator
+from deburger.requirements.tracker import Requirement, SubGoal
 
 console = Console()
 
@@ -17,74 +16,65 @@ console = Console()
 def run_analyze(since: str, config_path: str):
     console.print("[cyan]🍔 Analyzing code changes...[/cyan]\n")
 
-    analyzer = DiffAnalyzer()
-    changes = analyzer.get_changes(since)
+    requirement = _load_requirement(config_path)
+    guardrails = _load_guardrails(config_path)
 
-    if not changes:
+    orchestrator = DeburgerOrchestrator(requirement, guardrails)
+    result = orchestrator.analyze_changes(since)
+
+    if result.files_changed == 0:
         console.print("[yellow]No changes found[/yellow]")
         return
 
-    console.print(f"[green]Found {len(changes)} changed files[/green]\n")
-
-    requirement = _load_requirement(config_path)
-    tracker = RequirementTracker(requirement)
-    progress = tracker.calculate_progress(changes)
+    console.print(f"[green]Analyzed {result.files_changed} files (+{result.lines_added} -{result.lines_removed} lines)[/green]\n")
 
     console.print(Panel(
         f"[bold]Requirement:[/bold] {requirement.description}\n"
-        f"[bold]Progress:[/bold] {progress:.0%}",
+        f"[bold]Progress:[/bold] {result.requirement_progress:.0%}",
         title="📊 Requirement Progress",
         border_style="green",
     ))
 
     _show_subgoals(requirement)
 
-    scanner = SecurityScanner()
-    all_vulns = []
-    for change in changes:
-        try:
-            content = analyzer.get_file_content(change.file_path)
-            vulns = scanner.scan_file(change.file_path, content)
-            all_vulns.extend(vulns)
-        except Exception:
-            pass
-
-    if all_vulns:
-        _show_security_issues(all_vulns)
+    if result.security_issues:
+        _show_security_issues(result.security_issues)
     else:
         console.print("\n[green]✓ No security issues found[/green]")
 
-    metrics_calc = MetricsCalculator()
-    total_metrics = []
-    for change in changes:
-        try:
-            content = analyzer.get_file_content(change.file_path)
-            metrics = metrics_calc.calculate(change.file_path, content)
-            total_metrics.append(metrics)
-        except Exception:
-            pass
+    console.print(f"\n[cyan]Code Quality Score:[/cyan] {result.quality_score:.0f}/100")
 
-    if total_metrics:
-        avg_score = sum(m.overall_score for m in total_metrics) / len(total_metrics)
-        console.print(f"\n[cyan]Code Quality Score:[/cyan] {avg_score:.0f}/100")
-
-    next_focus = tracker.get_next_focus()
-    if next_focus:
-        console.print(
-            f"\n[yellow]→ Next Focus:[/yellow] {next_focus.description} ({next_focus.completion:.0%} complete)"
-        )
+    if result.guidance:
+        console.print("\n[bold cyan]AI Guidance:[/bold cyan]")
+        console.print(Panel(Markdown(result.guidance), border_style="cyan"))
+    else:
+        next_goal = [g for g in requirement.sub_goals if g.completion < 0.9]
+        if next_goal:
+            console.print(
+                f"\n[yellow]→ Next Focus:[/yellow] {next_goal[0].description}"
+            )
 
 
 def _load_requirement(config_path: str) -> Requirement:
     return Requirement(
-        description="Build quality code monitoring system",
+        description="Build AI code quality monitoring system",
         sub_goals=[
-            SubGoal(id="analyzer", description="Implement code change analysis", weight=30),
-            SubGoal(id="security", description="Add security scanning", weight=25),
-            SubGoal(id="metrics", description="Calculate quality metrics", weight=20),
-            SubGoal(id="requirements", description="Track requirement progress", weight=25),
+            SubGoal(id="analyzer", description="Code change analysis", weight=25),
+            SubGoal(id="security", description="Security vulnerability scanning", weight=25),
+            SubGoal(id="metrics", description="Quality metrics calculation", weight=20),
+            SubGoal(id="requirements", description="Requirement progress tracking", weight=15),
+            SubGoal(id="guidance", description="AI steering and guidance", weight=15),
         ],
     )
+
+
+def _load_guardrails(config_path: str) -> list[str]:
+    return [
+        "Never disable security features",
+        "Always validate user input",
+        "No hardcoded credentials",
+        "Prefer explicit over implicit",
+    ]
 
 
 def _show_subgoals(requirement: Requirement):
