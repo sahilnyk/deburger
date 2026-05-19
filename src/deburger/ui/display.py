@@ -17,7 +17,7 @@ class DeburgerUI:
         self.console = Console()
 
     def header(self, text: str):
-        self.console.print(f"\n[bold cyan]🍔 {text}[/bold cyan]\n")
+        self.console.print(f"\n[bold cyan]{text}[/bold cyan]\n")
 
     def success(self, text: str):
         self.console.print(f"[green]✓[/green] {text}")
@@ -45,7 +45,7 @@ class DeburgerUI:
             f"[bold]Requirement:[/bold] {requirement}\n"
             f"[bold]Progress:[/bold] {self._progress_bar_text(progress)}"
         )
-        return Panel(content, title="📊 Requirement Progress", border_style="green", box=box.ROUNDED)
+        return Panel(content, title="Requirement Progress", border_style="green", box=box.ROUNDED)
 
     def _progress_bar_text(self, progress: float) -> str:
         filled = int(progress * 20)
@@ -83,9 +83,9 @@ class DeburgerUI:
 
     def security_issues_panel(self, issues: list):
         if not issues:
-            return Panel("[green]✓ No security issues found[/green]", title="🔒 Security", border_style="green", box=box.ROUNDED)
+            return Panel("[green]✓ No security issues found[/green]", title="Security", border_style="green", box=box.ROUNDED)
 
-        tree = Tree("🔒 Security Issues", guide_style="red")
+        tree = Tree("Security Issues", guide_style="red")
 
         high = [i for i in issues if i.severity.value == "HIGH"]
         medium = [i for i in issues if i.severity.value == "MEDIUM"]
@@ -106,11 +106,11 @@ class DeburgerUI:
         if low:
             tree.add(f"[blue]LOW ({len(low)})[/blue]")
 
-        return Panel(tree, title=f"🔒 Security ({len(issues)} issues)", border_style="red", box=box.ROUNDED)
+        return Panel(tree, title=f"Security ({len(issues)} issues)", border_style="red", box=box.ROUNDED)
 
     def code_diff(self, filepath: str, old_code: str, new_code: str):
         syntax = Syntax(new_code, "python", theme="monokai", line_numbers=True)
-        return Panel(syntax, title=f"📄 {filepath}", border_style="blue", box=box.ROUNDED)
+        return Panel(syntax, title=filepath, border_style="blue", box=box.ROUNDED)
 
     def metrics_summary(self, quality_score: float, complexity: int, loc: int):
         layout = Layout()
@@ -124,12 +124,12 @@ class DeburgerUI:
             f"[bold]Lines of Code:[/bold] {loc}"
         )
 
-        return Panel(content, title="📈 Code Metrics", border_style="cyan", box=box.ROUNDED)
+        return Panel(content, title="Code Metrics", border_style="cyan", box=box.ROUNDED)
 
     def guidance_panel(self, guidance: str):
         return Panel(
             guidance,
-            title="🤖 AI Guidance",
+            title="AI Guidance",
             border_style="magenta",
             box=box.DOUBLE
         )
