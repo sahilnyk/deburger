@@ -1,16 +1,13 @@
-"""Initialize command implementation."""
+"""Initialize command with interactive prompts."""
 
 import os
 from pathlib import Path
 
-from rich.console import Console
-from rich.prompt import Prompt, Confirm
-
-console = Console()
+from deburger.ui.display import ui
 
 
 def run_init(requirement: str):
-    console.print("[cyan]🍔 Initializing deburger...[/cyan]\n")
+    ui.header("Initializing deburger...")
 
     config_content = f"""# deburger configuration
 requirement: "{requirement}"
@@ -42,9 +39,9 @@ llm:
 
   prompts:
     guidance: |
-      You are {{progress}}% toward the goal.
-      Next focus: {{next_focus}}
-      Security issues: {{security_count}}
+      You are {{{{progress}}}}% toward the goal.
+      Next focus: {{{{next_focus}}}}
+      Security issues: {{{{security_count}}}}
 
 security:
   enabled: true
@@ -60,12 +57,11 @@ metrics:
 
     config_path = Path(".deburger.yml")
     if config_path.exists():
-        if not Confirm.ask(f"[yellow]{config_path} exists. Overwrite?[/yellow]"):
-            console.print("[red]Aborted[/red]")
-            return
+        ui.warning(f"{config_path} already exists")
+        return
 
     config_path.write_text(config_content)
-    console.print(f"[green]✓ Created {config_path}[/green]")
+    ui.success(f"Created {config_path}")
 
     gitignore_path = Path(".gitignore")
     if gitignore_path.exists():
@@ -73,9 +69,9 @@ metrics:
         if ".deburger.cache" not in gitignore:
             with gitignore_path.open("a") as f:
                 f.write("\n.deburger.cache\n")
-            console.print("[green]✓ Updated .gitignore[/green]")
+            ui.success("Updated .gitignore")
 
-    console.print("\n[cyan]Next steps:[/cyan]")
-    console.print("1. Set your API key: export OPENAI_API_KEY=...")
-    console.print("2. Make code changes")
-    console.print("3. Run: deburger analyze")
+    ui.console.print("\n[cyan]Next steps:[/cyan]")
+    ui.info("Set your API key: export OPENAI_API_KEY=...")
+    ui.info("Make code changes")
+    ui.info("Run: deburger analyze")

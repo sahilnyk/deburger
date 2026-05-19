@@ -1,16 +1,13 @@
-"""Security scan command."""
+"""Security scan command with beautiful UI."""
 
 from pathlib import Path
 
-from rich.console import Console
-
 from deburger.security.scanner import SecurityScanner
-
-console = Console()
+from deburger.ui.display import ui
 
 
 def run_security_scan(path: str):
-    console.print("[cyan]🔒 Running security scan...[/cyan]\n")
+    ui.header("Running security scan...")
 
     scanner = SecurityScanner()
     all_vulns = []
@@ -18,19 +15,26 @@ def run_security_scan(path: str):
     root = Path(path)
     python_files = list(root.rglob("*.py"))
 
-    for filepath in python_files:
-        try:
-            content = filepath.read_text()
-            vulns = scanner.scan_file(str(filepath), content)
-            all_vulns.extend(vulns)
-        except Exception:
-            pass
+    with ui.progress_bar("Scanning files...") as progress:
+        task = progress.add_task("Scanning...", total=len(python_files))
+
+        for filepath in python_files:
+            try:
+                content = filepath.read_text()
+                vulns = scanner.scan_file(str(filepath), content)
+                all_vulns.extend(vulns)
+            except Exception:
+                pass
+            progress.update(task, advance=1)
+
+    ui.console.print()
 
     if not all_vulns:
-        console.print("[green]✓ No vulnerabilities found[/green]")
+        ui.success("No vulnerabilities found")
         return
 
-    console.print(f"[red]Found {len(all_vulns)} security issues:[/red]\n")
+    ui.console.print(ui.security_issues_panel(all_vulns))
+    ui.console.print()
 
     by_severity = {"HIGH": [], "MEDIUM": [], "LOW": []}
     for vuln in all_vulns:
@@ -42,11 +46,11 @@ def run_security_scan(path: str):
             continue
 
         color = {"HIGH": "red", "MEDIUM": "yellow", "LOW": "blue"}[severity]
-        console.print(f"[{color}]{severity} ({len(issues)}):[/{color}]")
+        ui.console.print(f"[{color}]{severity} ({len(issues)}):[/{color}]")
 
-        for vuln in issues:
-            console.print(f"  • {vuln.description}")
-            console.print(f"    Line {vuln.line}: {vuln.code_snippet}")
+        for vuln in issues[:5]:
+            ui.console.print(f"  • {vuln.description}")
+            ui.console.print(f"    [dim]Line {vuln.line}: {vuln.code_snippet[:60]}...[/dim]")
             if vuln.fix_suggestion:
-                console.print(f"    [dim]→ {vuln.fix_suggestion}[/dim]")
-            console.print()
+                ui.console.print(f"    [dim]→ {vuln.fix_suggestion}[/dim]")
+            ui.console.print()

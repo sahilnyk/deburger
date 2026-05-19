@@ -1,58 +1,56 @@
-"""Analyze command implementation."""
+"""Analyze command with beautiful UI."""
 
 from pathlib import Path
 
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.markdown import Markdown
-
 from deburger.orchestrator import DeburgerOrchestrator
 from deburger.requirements.tracker import Requirement, SubGoal
-
-console = Console()
+from deburger.ui.display import ui
 
 
 def run_analyze(since: str, config_path: str):
-    console.print("[cyan]🍔 Analyzing code changes...[/cyan]\n")
+    ui.header("Analyzing code changes...")
 
     requirement = _load_requirement(config_path)
     guardrails = _load_guardrails(config_path)
 
-    orchestrator = DeburgerOrchestrator(requirement, guardrails)
-    result = orchestrator.analyze_changes(since)
+    with ui.progress_bar("Running analysis...") as progress:
+        task = progress.add_task("Analyzing...", total=100)
+
+        orchestrator = DeburgerOrchestrator(requirement, guardrails)
+        progress.update(task, advance=30)
+
+        result = orchestrator.analyze_changes(since)
+        progress.update(task, advance=70)
 
     if result.files_changed == 0:
-        console.print("[yellow]No changes found[/yellow]")
+        ui.warning("No changes found")
         return
 
-    console.print(f"[green]Analyzed {result.files_changed} files (+{result.lines_added} -{result.lines_removed} lines)[/green]\n")
+    ui.console.print(f"\n{ui.summary_stats(result.files_changed, result.lines_added, result.lines_removed)}\n")
 
-    console.print(Panel(
-        f"[bold]Requirement:[/bold] {requirement.description}\n"
-        f"[bold]Progress:[/bold] {result.requirement_progress:.0%}",
-        title="📊 Requirement Progress",
-        border_style="green",
+    ui.console.print(ui.requirement_panel(requirement.description, result.requirement_progress))
+    ui.console.print()
+
+    ui.console.print(ui.subgoals_table(requirement.sub_goals))
+    ui.console.print()
+
+    ui.console.print(ui.security_issues_panel(result.security_issues))
+    ui.console.print()
+
+    ui.console.print(ui.metrics_summary(
+        quality_score=result.quality_score,
+        complexity=10,
+        loc=result.lines_added
     ))
-
-    _show_subgoals(requirement)
-
-    if result.security_issues:
-        _show_security_issues(result.security_issues)
-    else:
-        console.print("\n[green]✓ No security issues found[/green]")
-
-    console.print(f"\n[cyan]Code Quality Score:[/cyan] {result.quality_score:.0f}/100")
+    ui.console.print()
 
     if result.guidance:
-        console.print("\n[bold cyan]AI Guidance:[/bold cyan]")
-        console.print(Panel(Markdown(result.guidance), border_style="cyan"))
-    else:
-        next_goal = [g for g in requirement.sub_goals if g.completion < 0.9]
-        if next_goal:
-            console.print(
-                f"\n[yellow]→ Next Focus:[/yellow] {next_goal[0].description}"
-            )
+        ui.console.print(ui.guidance_panel(result.guidance[:500] + "..."))
+        ui.console.print()
+
+    next_goal = [g for g in requirement.sub_goals if g.completion < 0.9]
+    if next_goal:
+        ui.info(f"Next Focus: {next_goal[0].description}")
 
 
 def _load_requirement(config_path: str) -> Requirement:
@@ -75,29 +73,3 @@ def _load_guardrails(config_path: str) -> list[str]:
         "No hardcoded credentials",
         "Prefer explicit over implicit",
     ]
-
-
-def _show_subgoals(requirement: Requirement):
-    table = Table(title="Sub-Goals Progress")
-    table.add_column("Goal", style="cyan")
-    table.add_column("Progress", style="green")
-    table.add_column("Status", style="yellow")
-
-    for goal in requirement.sub_goals:
-        status = "✓" if goal.completion >= 0.9 else "↑" if goal.completion >= 0.5 else "⚠"
-        table.add_row(
-            goal.description,
-            f"{goal.completion:.0%}",
-            status,
-        )
-
-    console.print(table)
-
-
-def _show_security_issues(vulns: list):
-    console.print(f"\n[red]Security Issues ({len(vulns)}):[/red]")
-    for vuln in vulns[:10]:
-        severity_color = {"HIGH": "red", "MEDIUM": "yellow", "LOW": "blue"}[vuln.severity.value]
-        console.print(f"[{severity_color}]├─ {vuln.severity.value}:[/{severity_color}] {vuln.description} (line {vuln.line})")
-        if vuln.fix_suggestion:
-            console.print(f"   [dim]Fix: {vuln.fix_suggestion}[/dim]")
