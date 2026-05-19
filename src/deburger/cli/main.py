@@ -1,39 +1,69 @@
 """Main CLI entry point for deburger."""
 
-import asyncio
 import typer
 from rich.console import Console
 
 app = typer.Typer(
     name="deburger",
-    help="🍔 AI-powered debugging tool",
+    help="🍔 AI Code Quality Guardian",
     add_completion=False,
 )
 console = Console()
 
 
 @app.command()
-def run(
-    test_path: str = typer.Argument(None, help="Path to test file or directory"),
-    no_pr: bool = typer.Option(False, "--no-pr", help="Don't create PR"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show fixes without applying"),
-):
-    """Run tests and auto-debug failures."""
-    from deburger.cli.run_command import run_debug_workflow
+def init(requirement: str = typer.Option(..., "--requirement", "-r", help="Main requirement")):
+    """Initialize deburger configuration."""
+    from deburger.cli.init_command import run_init
 
-    asyncio.run(run_debug_workflow(
-        test_path=test_path,
-        dry_run=dry_run,
-        no_pr=no_pr,
-    ))
+    run_init(requirement)
+
+
+@app.command()
+def analyze(
+    since: str = typer.Option("HEAD~1", "--since", help="Analyze changes since commit"),
+    config_path: str = typer.Option(".deburger.yml", "--config", help="Config file path"),
+):
+    """Analyze code changes."""
+    from deburger.cli.analyze_command import run_analyze
+
+    run_analyze(since, config_path)
+
+
+@app.command()
+def security(
+    path: str = typer.Option(".", "--path", help="Path to scan"),
+):
+    """Run security vulnerability scan."""
+    from deburger.cli.security_command import run_security_scan
+
+    run_security_scan(path)
+
+
+@app.command()
+def report(
+    format: str = typer.Option("text", "--format", help="Output format (text/html/json)"),
+):
+    """Generate metrics report."""
+    from deburger.cli.report_command import run_report
+
+    run_report(format)
+
+
+@app.command()
+def guide():
+    """Get AI guidance for next steps."""
+    from deburger.cli.guide_command import run_guidance
+
+    run_guidance()
 
 
 @app.command()
 def config():
     """Configure deburger settings."""
-    from deburger.cli.config_wizard import run_config_wizard
+    from deburger.cli.config_command import run_config
 
-    run_config_wizard()
+    run_config()
 
 
 @app.command()
