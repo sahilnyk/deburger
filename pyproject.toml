@@ -13,12 +13,19 @@ keywords = ["ai", "code-quality", "security", "monitoring", "testing"]
 python = "^3.9"
 typer = "^0.9.0"
 rich = "^13.7.0"
+questionary = "^2.0.1"
+click = "^8.1.7"
+pygments = "^2.17.0"
+tabulate = "^0.9.0"
 openai = { version = "^1.6.0", optional = true }
 anthropic = { version = "^0.18.0", optional = true }
 PyYAML = "^6.0.1"
 
 [tool.poetry.extras]
 llm = ["openai", "anthropic"]
+
+[tool.poetry.scripts]
+deburger = "deburger.cli.main:app"
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^4.1.0"
