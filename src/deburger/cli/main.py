@@ -5,8 +5,9 @@ from rich.console import Console
 
 app = typer.Typer(
     name="deburger",
-    help="🍔 AI Code Quality Guardian",
+    help="🍔 AI Code Quality Guardian - Monitor AI-generated code",
     add_completion=False,
+    no_args_is_help=True,
 )
 console = Console()
 
@@ -69,9 +70,7 @@ def config():
 @app.command()
 def version():
     """Show deburger version."""
-    from deburger import __version__
-
-    console.print(f"🍔 deburger v{__version__}")
+    console.print("🍔 deburger v0.2.0")
 
 
 if __name__ == "__main__":
