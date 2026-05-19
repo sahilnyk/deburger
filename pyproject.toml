@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "deburger"
-version = "0.2.0"
+version = "0.2.0"  # Also update in src/deburger/_version.py
 description = "AI Code Quality Guardian - Monitor AI-generated code quality and requirement alignment"
 authors = ["Sahil Nayak <sahilnayak2056@gmail.com>"]
 readme = "README.md"

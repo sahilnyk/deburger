@@ -2,12 +2,20 @@
 
 from setuptools import setup, find_packages
 from pathlib import Path
+import re
 
 readme = Path("README.md").read_text(encoding="utf-8")
 
+version_file = Path("src/deburger/_version.py").read_text()
+version_match = re.search(r'^__version__ = ["\']([^"\']*)["\']', version_file, re.M)
+if version_match:
+    version = version_match.group(1)
+else:
+    raise RuntimeError("Unable to find version string")
+
 setup(
     name="deburger",
-    version="0.2.0",
+    version=version,
     description="AI Code Quality Guardian - Monitor AI-generated code quality",
     long_description=readme,
     long_description_content_type="text/markdown",

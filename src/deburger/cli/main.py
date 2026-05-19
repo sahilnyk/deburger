@@ -68,9 +68,21 @@ def config():
 
 
 @app.command()
+def test():
+    """Run self-tests to verify installation."""
+    from deburger.cli.test_command import run_self_test
+
+    success = run_self_test()
+    if not success:
+        raise SystemExit(1)
+
+
+@app.command()
 def version():
     """Show deburger version."""
-    console.print("🍔 deburger v0.2.0")
+    from deburger import __version__
+
+    console.print(f"deburger v{__version__}")
 
 
 if __name__ == "__main__":
