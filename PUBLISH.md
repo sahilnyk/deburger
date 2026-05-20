@@ -1,134 +1,240 @@
-# 🍔 Publishing to PyPI
+# 📦 Publishing deburger to PyPI
+
+Complete guide for publishing deburger to PyPI.
+
+---
 
 ## Prerequisites
 
-1. **PyPI Account**: Create at https://pypi.org/account/register/
-2. **API Token**: Get from https://pypi.org/manage/account/token/
-3. **Install Tools**:
-   ```bash
-   pip install build twine
-   ```
-
-## Step-by-Step Publish
-
-### 1. Clean Previous Builds
-
+### 1. Install Tools
 ```bash
-make clean
-# or
-rm -rf build/ dist/ *.egg-info
+pip install build twine
 ```
 
-### 2. Build Package
+### 2. Create PyPI Accounts
+- **Production**: https://pypi.org/account/register/
+- **Test**: https://test.pypi.org/account/register/
 
-```bash
-make build
-# or
-python -m build
+### 3. Generate API Tokens
+
+**Test PyPI:**
+1. Go to https://test.pypi.org/manage/account/token/
+2. Create token with "Entire account" scope
+3. Save token
+
+**Production PyPI:**
+1. Go to https://pypi.org/manage/account/token/
+2. Create token with "Entire account" scope
+3. Save token
+
+### 4. Configure Credentials
+
+Create `~/.pypirc`:
+```ini
+[distutils]
+index-servers =
+    pypi
+    testpypi
+
+[pypi]
+username = __token__
+password = pypi-YOUR-PRODUCTION-TOKEN-HERE
+
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = pypi-YOUR-TEST-TOKEN-HERE
 ```
 
-This creates:
-- `dist/deburger-0.2.0.tar.gz` (source)
-- `dist/deburger-0.2.0-py3-none-any.whl` (wheel)
+Secure it:
+```bash
+chmod 600 ~/.pypirc
+```
 
-### 3. Check Package
+---
 
+## Quick Publish (Automated Script)
+
+### Test Publish
+```bash
+python publish_to_pypi.py --test
+```
+
+### Production Publish
+```bash
+python publish_to_pypi.py --prod
+```
+
+The script handles everything:
+- ✓ Version check
+- ✓ Run tests
+- ✓ Lint code
+- ✓ Clean builds
+- ✓ Build package
+- ✓ Upload to PyPI
+
+---
+
+## Manual Publish Steps
+
+### 1. Update Version
+
+Edit **both** files (must match):
+
+**src/deburger/_version.py:**
+```python
+__version__ = "0.2.1"
+```
+
+**pyproject.toml (line 3):**
+```toml
+version = "0.2.1"
+```
+
+### 2. Update Changelog
+
+**CHANGELOG.md:**
+```markdown
+## [0.2.1] - 2026-05-21
+
+### Added
+- Multi-language security scanning
+- Structured logging
+- Improved CLI
+
+### Changed
+- Dynamic config loading
+
+### Fixed
+- Config validation
+```
+
+### 3. Run Tests
+```bash
+pytest tests/ -v
+```
+
+### 4. Lint Code
+```bash
+ruff check src/
+```
+
+### 5. Clean Builds
+```bash
+rm -rf build/ dist/ *.egg-info src/*.egg-info
+```
+
+### 6. Build Package
+```bash
+python setup.py sdist bdist_wheel
+```
+
+Verify:
+```bash
+ls dist/
+# deburger-0.2.1-py3-none-any.whl
+# deburger-0.2.1.tar.gz
+```
+
+### 7. Check Package
 ```bash
 twine check dist/*
 ```
 
-Should show: `PASSED`
-
-### 4. Test on TestPyPI (Optional)
-
+### 8. Upload to TestPyPI (Recommended First)
 ```bash
 twine upload --repository testpypi dist/*
-# Username: __token__
-# Password: <your-testpypi-token>
-
-# Test install
-pip install --index-url https://test.pypi.org/simple/ deburger
 ```
 
-### 5. Publish to Real PyPI
+Test installation:
+```bash
+python -m venv test_env
+source test_env/bin/activate
+pip install --index-url https://test.pypi.org/simple/ deburger
+deburger --help
+deactivate
+```
 
+### 9. Upload to Production PyPI
 ```bash
 twine upload dist/*
-# Username: __token__
-# Password: <your-pypi-token>
 ```
 
-### 6. Verify
+---
 
+## Post-Publishing
+
+### 1. Create Git Tag
+```bash
+git tag v0.2.1
+git push origin v0.2.1
+```
+
+### 2. Create GitHub Release
+1. Go to https://github.com/sahilnyk/deburger/releases/new
+2. Tag: `v0.2.1`
+3. Title: `deburger v0.2.1`
+4. Description: Copy from CHANGELOG.md
+5. Attach dist files
+
+### 3. Test Installation
 ```bash
 pip install deburger
 deburger --help
+deburger version
 ```
 
-## Using GitHub Actions (Automated)
-
-1. Add PyPI token to GitHub Secrets:
-   - Go to repo Settings → Secrets → Actions
-   - Add: `PYPI_API_TOKEN`
-
-2. Create a GitHub Release:
-   ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
-   ```
-
-3. Create release on GitHub:
-   - Go to Releases → Draft new release
-   - Tag: v0.2.0
-   - Title: v0.2.0
-   - Click "Publish release"
-
-4. GitHub Actions will auto-publish to PyPI
-
-## Version Updates
-
-Before publishing new version:
-
-1. Update version in:
-   - `setup.py` (line 12)
-   - `pyproject.toml` (line 3)
-   - `src/deburger/__init__.py` (line 3)
-   - `PKG-INFO` (line 3)
-
-2. Update `CHANGELOG.md`
-
-3. Commit:
-   ```bash
-   git add setup.py pyproject.toml src/deburger/__init__.py PKG-INFO CHANGELOG.md
-   git commit -m "updated: version to 0.3.0"
-   git tag v0.3.0
-   git push origin master --tags
-   ```
+---
 
 ## Troubleshooting
 
-**Authentication Failed**
-- Make sure you're using `__token__` as username
-- Copy token correctly (no extra spaces)
+### "File already exists"
+**Fix:** Increment version, rebuild, re-upload
 
-**File Already Exists**
-- Can't re-upload same version
-- Increment version number
+### "Invalid credentials"
+**Fix:** Check `~/.pypirc` token is correct
 
-**Invalid Distribution**
-- Run `twine check dist/*`
-- Check setup.py syntax
-- Ensure README.md exists
+### "HTTPError: 403"
+**Fix:** Regenerate API token on PyPI
 
-## Quick Commands
+### "Package verification failed"
+**Fix:** 
+```bash
+twine check dist/*
+cat MANIFEST.in
+```
+
+---
+
+## Quick Reference
 
 ```bash
-# Full publish workflow
-make clean
-make build
+# Automated publish (test)
+python publish_to_pypi.py --test
+
+# Automated publish (production)
+python publish_to_pypi.py --prod
+
+# Manual build & upload
+rm -rf dist/
+python setup.py sdist bdist_wheel
 twine check dist/*
 twine upload dist/*
+```
 
-# Or with Makefile
-make publish
+---
+
+## Security
+
+1. Never commit tokens to git
+2. Use `.gitignore` for `.pypirc`
+3. Rotate tokens periodically
+4. Enable 2FA on PyPI
+
+---
+
+**Ready to publish? Run:**
+```bash
+python publish_to_pypi.py --test    # Test first
+python publish_to_pypi.py --prod    # Then production
 ```
