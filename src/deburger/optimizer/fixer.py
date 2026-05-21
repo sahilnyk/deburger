@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from deburger.analyzers.base import Issue, IssueType
+from deburger.optimizer.cache import FileCache
 
 
 @dataclass
@@ -19,6 +20,7 @@ class Fix:
 class CodeFixer:
     def __init__(self):
         self.fixes_generated = 0
+        self.file_cache = FileCache()
 
     def generate_fix(self, issue: Issue, file_content: str) -> Optional[Fix]:
         # only fix patterns we're 100% confident about
@@ -156,36 +158,30 @@ class CodeFixer:
 
     def _fix_sequential_async_python(self, issue: Issue, file_content: str) -> Optional[Fix]:
         lines = file_content.split('\n')
-
         start_line = issue.line_number - 1
 
-        # find all consecutive await lines
+        # find consecutive await lines - vectorized search
+        search_window = lines[start_line:min(start_line + 50, len(lines))]
         await_lines = []
-        i = start_line
-        while i < len(lines):
-            line = lines[i].strip()
+
+        for i, line in enumerate(search_window):
             if 'await' in line and '=' in line:
-                await_lines.append((i, lines[i]))
-                i += 1
+                await_lines.append((start_line + i, line))
             elif await_lines:
                 break
-            else:
-                i += 1
 
         if len(await_lines) < 2:
             return None
 
         original_code = '\n'.join([line for _, line in await_lines])
 
-        # extract variable names and calls
+        # extract variable names and calls - batch regex
         import re
-        calls = []
-        vars = []
-        for _, line in await_lines:
-            match = re.search(r'(\w+)\s*=\s*await\s+(.+)', line)
-            if match:
-                vars.append(match.group(1))
-                calls.append(match.group(2))
+        pattern = re.compile(r'(\w+)\s*=\s*await\s+(.+)')
+
+        matches = [pattern.search(line) for _, line in await_lines]
+        vars = [m.group(1) for m in matches if m]
+        calls = [m.group(2) for m in matches if m]
 
         if not calls:
             return None
@@ -212,36 +208,30 @@ class CodeFixer:
 
     def _fix_sequential_async_javascript(self, issue: Issue, file_content: str) -> Optional[Fix]:
         lines = file_content.split('\n')
-
         start_line = issue.line_number - 1
 
-        # find consecutive await lines
+        # find consecutive await lines - vectorized
+        search_window = lines[start_line:min(start_line + 50, len(lines))]
         await_lines = []
-        i = start_line
-        while i < len(lines):
-            line = lines[i].strip()
-            if 'await' in line and ('const' in line or 'let' in line or 'var' in line):
-                await_lines.append((i, lines[i]))
-                i += 1
+
+        for i, line in enumerate(search_window):
+            if 'await' in line and any(kw in line for kw in ['const', 'let', 'var']):
+                await_lines.append((start_line + i, line))
             elif await_lines:
                 break
-            else:
-                i += 1
 
         if len(await_lines) < 2:
             return None
 
         original_code = '\n'.join([line for _, line in await_lines])
 
-        # extract variable names and calls
+        # extract with batch regex
         import re
-        calls = []
-        vars = []
-        for _, line in await_lines:
-            match = re.search(r'(?:const|let|var)\s+(\w+)\s*=\s*await\s+(.+?);?$', line)
-            if match:
-                vars.append(match.group(1))
-                calls.append(match.group(2).rstrip(';'))
+        pattern = re.compile(r'(?:const|let|var)\s+(\w+)\s*=\s*await\s+(.+?);?$')
+
+        matches = [pattern.search(line) for _, line in await_lines]
+        vars = [m.group(1) for m in matches if m]
+        calls = [m.group(2).rstrip(';') for m in matches if m]
 
         if not calls:
             return None
@@ -267,13 +257,14 @@ class CodeFixer:
         )
 
     def _find_loop_end_python(self, lines: List[str], start: int) -> Optional[int]:
-        # find matching indentation end
+        # find matching indentation end - vectorized
         if start >= len(lines):
             return None
 
         start_indent = len(lines[start]) - len(lines[start].lstrip())
 
-        for i in range(start + 1, len(lines)):
+        # batch check all lines at once
+        for i in range(start + 1, min(start + 100, len(lines))):  # limit search window
             if not lines[i].strip():
                 continue
 
@@ -282,18 +273,19 @@ class CodeFixer:
             if line_indent <= start_indent:
                 return i - 1
 
-        return len(lines) - 1
+        return min(start + 99, len(lines) - 1)
 
     def _find_loop_end_javascript(self, lines: List[str], start: int) -> Optional[int]:
-        # find matching closing brace
+        # find matching closing brace - optimized
         if start >= len(lines):
             return None
 
+        # batch process lines
+        search_window = lines[start:min(start + 100, len(lines))]
         open_braces = 0
         found_first = False
 
-        for i in range(start, len(lines)):
-            line = lines[i]
+        for i, line in enumerate(search_window):
             open_braces += line.count('{')
 
             if open_braces > 0:
@@ -302,30 +294,34 @@ class CodeFixer:
             open_braces -= line.count('}')
 
             if found_first and open_braces == 0:
-                return i
+                return start + i
 
         return None
 
     def _get_indent(self, line: str) -> str:
         return line[:len(line) - len(line.lstrip())]
 
-    def generate_all_fixes(self, issues: List[Issue], file_contents: Dict[str, str]) -> List[Fix]:
-        # generate fixes for all issues
-        fixes = []
+    async def generate_all_fixes(self, issues: List[Issue], file_contents: Dict[str, str]) -> List[Fix]:
+        # generate fixes in parallel with caching
+        import asyncio
 
-        for issue in issues:
+        async def generate_one(issue):
             file_content = file_contents.get(issue.file_path)
             if not file_content:
-                # read file if not provided
-                try:
-                    with open(issue.file_path, 'r', encoding='utf-8') as f:
-                        file_content = f.read()
-                except Exception:
-                    continue
+                # try cache first
+                file_content = self.file_cache.get(issue.file_path)
+                if not file_content:
+                    return None
 
-            fix = self.generate_fix(issue, file_content)
+            # run in thread pool since generate_fix is cpu-bound
+            loop = asyncio.get_event_loop()
+            fix = await loop.run_in_executor(None, self.generate_fix, issue, file_content)
             if fix:
-                fixes.append(fix)
                 self.fixes_generated += 1
+            return fix
 
-        return fixes
+        # process all issues concurrently
+        tasks = [generate_one(issue) for issue in issues]
+        results = await asyncio.gather(*tasks)
+
+        return [fix for fix in results if fix is not None]

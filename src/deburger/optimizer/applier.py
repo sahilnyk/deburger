@@ -99,21 +99,26 @@ class FixApplier:
             fixes_applied=1
         )
 
-    def apply_fixes(self, fixes: List[Fix], auto_only: bool = False) -> Dict:
-        # apply multiple fixes
-        results = []
-        files_modified = set()
+    async def apply_fixes(self, fixes: List[Fix], auto_only: bool = False) -> Dict:
+        # apply multiple fixes in parallel
+        import asyncio
 
-        for fix in fixes:
+        async def apply_one(fix):
             # skip unsafe fixes if auto_only
             if auto_only and not fix.auto_apply_safe:
-                continue
+                return None
 
-            result = self.apply_fix(fix)
-            results.append(result)
+            # run in thread pool since file I/O
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, self.apply_fix, fix)
+            return result
 
-            if result.success:
-                files_modified.add(result.file_path)
+        # process all fixes concurrently
+        tasks = [apply_one(fix) for fix in fixes]
+        all_results = await asyncio.gather(*tasks)
+
+        results = [r for r in all_results if r is not None]
+        files_modified = set(r.file_path for r in results if r.success)
 
         return {
             "total_fixes": len(fixes),
