@@ -1,5 +1,3 @@
-"""Pricing cache - keeps pricing data fresh without hammering APIs."""
-
 import json
 import sqlite3
 from pathlib import Path
@@ -9,8 +7,6 @@ from decimal import Decimal
 
 
 class PricingCache:
-    """Cache for cloud provider pricing data."""
-
     def __init__(self, cache_dir: Optional[Path] = None):
         if cache_dir is None:
             cache_dir = Path.home() / ".deburger" / "cache"
@@ -20,7 +16,6 @@ class PricingCache:
         self._init_db()
 
     def _init_db(self):
-        """Initialize cache database."""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS pricing_cache (
@@ -35,7 +30,6 @@ class PricingCache:
             """)
 
     async def get(self, key: str) -> Optional[Dict[str, Decimal]]:
-        """Get cached pricing data if not expired."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT value, expires_at FROM pricing_cache WHERE key = ?",
@@ -48,6 +42,7 @@ class PricingCache:
 
             value_json, expires_at = row
 
+            # expired? delete it
             if datetime.now().timestamp() > expires_at:
                 conn.execute("DELETE FROM pricing_cache WHERE key = ?", (key,))
                 return None
@@ -56,7 +51,7 @@ class PricingCache:
             return {k: Decimal(v) for k, v in data.items()}
 
     async def set(self, key: str, value: Dict[str, Decimal], ttl: int = 86400):
-        """Cache pricing data with TTL (default 24 hours)."""
+        # cache for 24hrs by default
         expires_at = int((datetime.now() + timedelta(seconds=ttl)).timestamp())
 
         value_json = json.dumps({k: str(v) for k, v in value.items()})
@@ -68,12 +63,10 @@ class PricingCache:
             )
 
     async def clear_expired(self):
-        """Remove expired entries."""
         now = int(datetime.now().timestamp())
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM pricing_cache WHERE expires_at < ?", (now,))
 
     async def clear_all(self):
-        """Clear entire cache."""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM pricing_cache")

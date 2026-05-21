@@ -1,5 +1,3 @@
-"""Cost calculation engine - figures out how much your code actually costs."""
-
 from decimal import Decimal
 from typing import Dict, List, Optional
 from dataclasses import dataclass
@@ -11,7 +9,6 @@ from deburger.cost.cache import PricingCache
 
 @dataclass
 class CostBreakdown:
-    """What you're spending vs what you could be spending."""
     issue_id: str
     resource_type: ResourceType
     current_cost: Decimal
@@ -24,7 +21,6 @@ class CostBreakdown:
 
 @dataclass
 class TrafficEstimate:
-    """How much traffic you're actually getting."""
     requests_per_day: int
     avg_duration_ms: int
     avg_memory_mb: int
@@ -34,7 +30,6 @@ class TrafficEstimate:
 
     @classmethod
     def from_config(cls, config: dict) -> "TrafficEstimate":
-        """Load from config file."""
         traffic = config.get("traffic", {})
         return cls(
             requests_per_day=traffic.get("requests_per_day", 100000),
@@ -47,8 +42,6 @@ class TrafficEstimate:
 
 
 class CostEngine:
-    """Calculates real cloud costs using actual pricing data."""
-
     def __init__(self, provider: CloudProvider, region: str, cache: Optional[PricingCache] = None):
         self.provider = provider
         self.region = region
@@ -56,7 +49,7 @@ class CostEngine:
         self._pricing_preloaded = {}
 
     async def preload_pricing(self):
-        """Preload all pricing data in parallel (one call per resource type)."""
+        # preload all pricing in parallel, then everything is cached
         import asyncio
 
         resource_types = [
@@ -69,16 +62,12 @@ class CostEngine:
         tasks = [self._get_pricing(rt) for rt in resource_types]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Now all pricing is cached - subsequent calls will be instant
-
     async def calculate_issue_cost(
         self,
         issue: Issue,
         traffic: TrafficEstimate,
         resource_config: Optional[Dict] = None
     ) -> CostBreakdown:
-        """Figure out how much this issue is costing you."""
-
         if issue.type == IssueType.N_PLUS_ONE_QUERY:
             return await self._cost_n_plus_one(issue, traffic, resource_config or {})
         elif issue.type == IssueType.SEQUENTIAL_ASYNC:
@@ -96,15 +85,12 @@ class CostEngine:
         traffic: TrafficEstimate,
         resource_config: Dict
     ) -> CostBreakdown:
-        """Calculate cost for N+1 query hell."""
-
         iterations = self._guess_loop_iterations(issue)
 
         monthly_requests = traffic.requests_per_day * 30
         queries_per_request = iterations
         total_queries = monthly_requests * queries_per_request
 
-        db_type = resource_config.get("database", {}).get("type", "rds")
         pricing = await self._get_pricing(ResourceType.DATABASE)
 
         io_cost_per_query = pricing.get("io_cost_per_operation", Decimal("0.0000002"))
@@ -115,7 +101,7 @@ class CostEngine:
             Decimal(monthly_requests) * connection_overhead * Decimal(iterations)
         )
 
-        # With fix: one bulk query per request
+        # with fix: one bulk query per request
         optimized_queries = monthly_requests
         optimized_cost = Decimal(optimized_queries) * io_cost_per_query
 
@@ -141,15 +127,13 @@ class CostEngine:
         traffic: TrafficEstimate,
         resource_config: Dict
     ) -> CostBreakdown:
-        """Calculate cost for sequential async operations."""
-
         await_count = issue.context.get("await_count", 2)
         monthly_requests = traffic.requests_per_day * 30
 
-        # Sequential: everything waits in line
+        # sequential: everything waits in line
         sequential_time_ms = traffic.avg_duration_ms * await_count
 
-        # Parallel: everything runs at once (with some overhead)
+        # parallel: runs at once (some overhead)
         parallel_time_ms = int(traffic.avg_duration_ms * 1.2)
 
         wasted_ms = sequential_time_ms - parallel_time_ms
@@ -186,8 +170,6 @@ class CostEngine:
         traffic: TrafficEstimate,
         resource_config: Dict
     ) -> CostBreakdown:
-        """Calculate cost for over-provisioned resources."""
-
         current_memory = resource_config.get("memory_mb", traffic.avg_memory_mb)
         optimal_memory = int(current_memory * 0.6)
 
@@ -226,8 +208,6 @@ class CostEngine:
         traffic: TrafficEstimate,
         resource_config: Dict
     ) -> CostBreakdown:
-        """Calculate savings from adding caching."""
-
         cache_hit_rate = Decimal("0.80")
         monthly_requests = traffic.requests_per_day * 30
 
@@ -236,7 +216,7 @@ class CostEngine:
 
         current_cost = Decimal(monthly_requests) * query_cost * Decimal(traffic.db_queries_per_request)
 
-        # With cache: only misses hit the database
+        # with cache: only misses hit db
         cache_misses = Decimal(monthly_requests) * (Decimal("1.0") - cache_hit_rate)
         db_cost_with_cache = cache_misses * query_cost * Decimal(traffic.db_queries_per_request)
 
@@ -277,7 +257,7 @@ class CostEngine:
         )
 
     def _guess_loop_iterations(self, issue: Issue) -> int:
-        """Guess how many times a loop runs."""
+        # try to guess loop size from code
         if "estimated_iterations" in issue.context:
             return issue.context["estimated_iterations"]
 
@@ -296,7 +276,7 @@ class CostEngine:
         return 500
 
     async def _get_pricing(self, resource_type: ResourceType) -> Dict[str, Decimal]:
-        """Get pricing data from cache or provider."""
+        # get pricing from cache or fetch from provider
         cache_key = f"{self.provider.name}:{self.region}:{resource_type.value}"
 
         cached = await self.cache.get(cache_key)
@@ -317,10 +297,9 @@ class CostEngine:
         return pricing_dict
 
     async def calculate_total_savings(self, issues: List[Issue], traffic: TrafficEstimate) -> Dict:
-        """Calculate total savings across all issues (runs in parallel for speed)."""
+        # calculate all issues in parallel for speed
         import asyncio
 
-        # Process all issues concurrently for max speed
         tasks = [self.calculate_issue_cost(issue, traffic) for issue in issues]
         breakdowns = await asyncio.gather(*tasks)
 
