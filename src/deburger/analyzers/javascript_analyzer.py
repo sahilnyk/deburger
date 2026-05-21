@@ -22,10 +22,10 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         issues = []
 
         if config.get("detect", {}).get("n_plus_one_queries", True):
-            issues.extend(self._detect_n_plus_one_simple(file_path, code))
+            issues.extend(self._detect_n_plus_one_simple(file_path, code, config))
 
         if config.get("detect", {}).get("sequential_async", True):
-            issues.extend(self._detect_sequential_async_simple(file_path, code))
+            issues.extend(self._detect_sequential_async_simple(file_path, code, config))
 
         # run all pattern detectors
         from deburger.analyzers.patterns import ALL_PATTERNS
@@ -41,36 +41,27 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         # For now, return None as placeholder
         return None
 
-    def _detect_n_plus_one_simple(self, file_path: str, code: str) -> List[Issue]:
-        """Simple pattern matching for N+1 queries in JS."""
+    def _detect_n_plus_one_simple(self, file_path: str, code: str, config: dict = None) -> List[Issue]:
         issues = []
         lines = code.split("\n")
-
-        # Look for patterns like:
-        # for (const item of items) {
-        #     await db.query(...)
-        # }
+        config = config or {}
 
         in_loop = False
         loop_start_line = 0
 
         for i, line in enumerate(lines, 1):
-            # Detect loop start
             if re.search(r'for\s*\(.*\)|\.forEach\(|\.map\(', line):
                 in_loop = True
                 loop_start_line = i
 
-            # Detect loop end
             if in_loop and '}' in line:
                 in_loop = False
 
-            # Detect DB calls in loop
             if in_loop and re.search(r'(await|\.then)\s+.*\.(query|find|findOne|get)', line):
                 code_snippet = "\n".join(lines[loop_start_line - 1:i + 1])
 
-                # Estimate cost
                 iterations = 500
-                requests_per_day = 50000
+                requests_per_day = config.get("traffic", {}).get("requests_per_day", 100000)
                 queries_per_month = iterations * requests_per_day * 30
                 estimated_cost = Decimal(queries_per_month) * Decimal("0.0000002")
 
@@ -96,27 +87,24 @@ class JavaScriptAnalyzer(BaseAnalyzer):
 
         return issues
 
-    def _detect_sequential_async_simple(self, file_path: str, code: str) -> List[Issue]:
-        """Simple pattern matching for sequential async in JS."""
+    def _detect_sequential_async_simple(self, file_path: str, code: str, config: dict = None) -> List[Issue]:
         issues = []
         lines = code.split("\n")
+        config = config or {}
 
-        # Look for consecutive await statements
         await_lines = []
 
         for i, line in enumerate(lines, 1):
             if re.match(r'\s*(const|let|var).*=\s*await\s+', line):
                 await_lines.append(i)
             elif await_lines:
-                # Check if we have 2+ consecutive awaits
                 if len(await_lines) >= 2 and await_lines[-1] == i - 1:
-                    # Found sequential awaits
                     first = await_lines[0]
                     last = await_lines[-1]
                     code_snippet = "\n".join(lines[first - 1:last])
 
                     saved_seconds = len(await_lines) - 1
-                    monthly_requests = 50000 * 30
+                    monthly_requests = config.get("traffic", {}).get("requests_per_day", 100000) * 30
                     savings = (
                         Decimal(monthly_requests) *
                         Decimal(saved_seconds) *

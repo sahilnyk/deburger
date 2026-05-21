@@ -27,10 +27,10 @@ class PythonAnalyzer(BaseAnalyzer):
             return issues
 
         if config.get("detect", {}).get("n_plus_one_queries", True):
-            issues.extend(self._detect_n_plus_one(tree, file_path, code))
+            issues.extend(self._detect_n_plus_one(tree, file_path, code, config))
 
         if config.get("detect", {}).get("sequential_async", True):
-            issues.extend(self._detect_sequential_async(tree, file_path, code))
+            issues.extend(self._detect_sequential_async(tree, file_path, code, config))
 
         # run all pattern detectors
         from deburger.analyzers.patterns import ALL_PATTERNS
@@ -48,17 +48,12 @@ class PythonAnalyzer(BaseAnalyzer):
         self,
         tree: ast.AST,
         file_path: str,
-        code: str
+        code: str,
+        config: dict = None
     ) -> List[Issue]:
-        """
-        Detect N+1 query patterns.
-
-        Pattern:
-        for item in items:
-            result = db.query(...item...)
-        """
         issues = []
         lines = code.split("\n")
+        config = config or {}
 
         for node in ast.walk(tree):
             if not isinstance(node, ast.For):
@@ -72,9 +67,8 @@ class PythonAnalyzer(BaseAnalyzer):
                 line_num = node.lineno
                 code_snippet = "\n".join(lines[line_num - 1:line_num + 3])
 
-                # Estimate cost (assuming 500 iterations, 50K requests/day)
-                iterations = 500  # Conservative estimate
-                requests_per_day = 50000
+                iterations = 500
+                requests_per_day = config.get("traffic", {}).get("requests_per_day", 100000)
                 queries_per_month = iterations * requests_per_day * 30
 
                 # Cost: ~$0.0000002 per query on RDS
@@ -138,24 +132,17 @@ class PythonAnalyzer(BaseAnalyzer):
         self,
         tree: ast.AST,
         file_path: str,
-        code: str
+        code: str,
+        config: dict = None
     ) -> List[Issue]:
-        """
-        Detect sequential async/await calls that should be parallel.
-
-        Pattern:
-        result1 = await call1()
-        result2 = await call2()  # Should use asyncio.gather()
-        """
         issues = []
         lines = code.split("\n")
+        config = config or {}
 
-        # Find async functions
         for node in ast.walk(tree):
             if not isinstance(node, ast.AsyncFunctionDef):
                 continue
 
-            # Look for consecutive await statements
             awaits = []
             for stmt in node.body:
                 if isinstance(stmt, (ast.Assign, ast.Expr)):
@@ -168,7 +155,8 @@ class PythonAnalyzer(BaseAnalyzer):
                             issues.append(self._create_sequential_async_issue(
                                 awaits,
                                 file_path,
-                                lines
+                                lines,
+                                config
                             ))
                         awaits = []
 
@@ -193,21 +181,17 @@ class PythonAnalyzer(BaseAnalyzer):
         self,
         await_nodes: List[ast.AST],
         file_path: str,
-        lines: List[str]
+        lines: List[str],
+        config: dict = None
     ) -> Issue:
-        """Create issue for sequential async calls."""
+        config = config or {}
 
         first_line = await_nodes[0].lineno
         last_line = await_nodes[-1].lineno
         code_snippet = "\n".join(lines[first_line - 1:last_line + 1])
 
-        # Cost estimate: Wasted time = wasted Lambda compute
-        # Assume 2 calls, 1s each = 2s sequential vs 1s parallel
-        # Savings: 1s per invocation
-        # 50K requests/day, $0.0000166667 per GB-second
-        # 1GB memory, 1s saved, 50K * 30 requests
-        saved_seconds = len(await_nodes) - 1  # Save (n-1) seconds
-        monthly_requests = 50000 * 30
+        saved_seconds = len(await_nodes) - 1
+        monthly_requests = config.get("traffic", {}).get("requests_per_day", 100000) * 30
         cost_per_gb_second = Decimal("0.0000166667")
 
         savings = (
