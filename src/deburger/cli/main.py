@@ -325,6 +325,61 @@ async def _pr_comment(pr: int, base: str):
 
 
 @app.command()
+def blame(
+    path: str = typer.Argument(".", help="Path to analyze"),
+    top: int = typer.Option(10, "--top", "-n", help="Number of devs to show"),
+):
+    """Show who's costing the most (git blame + cost analysis)."""
+    asyncio.run(_blame(path, top))
+
+
+async def _blame(path: str, top: int):
+    from deburger.config import load_config
+    from deburger.scanner import FastScanner
+    from deburger.integrations.blame import get_cost_leaderboard
+
+    config = load_config()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("scanning + blaming...", total=None)
+        scanner = FastScanner(config.to_dict())
+        issues = await scanner.scan_path(path, incremental=False)
+
+    if not issues:
+        console.print("[green]no expensive patterns found[/green]")
+        return
+
+    leaderboard = get_cost_leaderboard(issues)
+
+    table = Table(title="cost leaderboard (who's burning money)", show_header=True, header_style="bold cyan")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("developer")
+    table.add_column("issues", justify="right")
+    table.add_column("monthly cost", justify="right", style="red")
+    table.add_column("worst issue", style="dim")
+
+    for rank, report in enumerate(leaderboard[:top], 1):
+        worst = report.worst_issue.description if report.worst_issue else "-"
+        table.add_row(
+            str(rank),
+            report.author,
+            str(report.issues_introduced),
+            f"${report.total_monthly_cost:.2f}",
+            worst,
+        )
+
+    console.print()
+    console.print(table)
+
+    total = sum(r.total_monthly_cost for r in leaderboard)
+    console.print(f"\n[bold]total waste:[/bold] [red]${total:.2f}/month[/red]")
+
+
+@app.command()
 def version():
     """Show version."""
     from deburger import __version__
