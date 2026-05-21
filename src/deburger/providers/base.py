@@ -17,6 +17,8 @@ class ResourceType(Enum):
     QUEUE = "queue"
     CDN = "cdn"
     DATA_TRANSFER = "data_transfer"
+    CACHE = "cache"
+    OTHER = "other"
 
 
 @dataclass
@@ -67,6 +69,10 @@ class PricingData:
     provider: str
     region: str
     resource_type: ResourceType
+    gb_second_cost: Decimal
+    request_cost: Decimal
+    io_cost: Decimal
+    storage_cost: Decimal
     prices: Dict[str, Decimal]
     updated_at: str
 
