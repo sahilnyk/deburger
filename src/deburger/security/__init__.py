@@ -1,1 +1,0 @@
-"""Security vulnerability detection module."""

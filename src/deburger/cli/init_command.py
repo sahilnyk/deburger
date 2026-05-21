@@ -1,143 +1,221 @@
-"""Initialize command with interactive prompts."""
+"""Initialize deburger configuration."""
 
 from pathlib import Path
 from rich.console import Console
+from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
+from rich import box
+import yaml
 
 console = Console()
 
 
-def run_init(requirement: str = None, interactive: bool = False):
-    """Initialize deburger configuration."""
-    from deburger.utils.logger import get_logger
-    from deburger.utils.config import DeburgerConfig, SubGoalConfig, LLMConfig, SecurityConfig, MetricsConfig
-
-    logger = get_logger()
-    logger.log_command("init", requirement=requirement, interactive=interactive)
-
-    console.print("[bold cyan]🍔 setting things up...[/bold cyan]\n")
+def run_init(provider: str, interactive: bool):
+    """Initialize deburger in current directory."""
 
     config_path = Path(".deburger.yml")
+
     if config_path.exists():
-        if not Confirm.ask(f"[yellow]{config_path} already exists. Overwrite?[/yellow]"):
-            console.print("[yellow]Initialization cancelled[/yellow]")
+        overwrite = Confirm.ask(
+            ".deburger.yml already exists. Overwrite?",
+            default=False
+        )
+        if not overwrite:
+            console.print("[yellow]cancelled[/yellow]")
             return
 
     if interactive:
-        requirement = _interactive_setup()
-    elif not requirement:
-        console.print("[red]Error: requirement is required[/red]")
-        return
+        config = _interactive_setup()
+    else:
+        config = _default_config(provider)
 
-    # Create default configuration
-    config = DeburgerConfig(
-        requirement=requirement,
-        sub_goals=[
-            SubGoalConfig(
-                id="core",
-                description="Implement core functionality",
-                weight=40,
-                keywords=["implement", "add", "create", "function"],
-            ),
-            SubGoalConfig(
-                id="testing",
-                description="Add comprehensive tests",
-                weight=30,
-                keywords=["test", "spec", "assert", "unittest"],
-            ),
-            SubGoalConfig(
-                id="security",
-                description="Security hardening",
-                weight=20,
-                keywords=["security", "auth", "validation", "sanitize"],
-            ),
-            SubGoalConfig(
-                id="docs",
-                description="Documentation",
-                weight=10,
-                keywords=["doc", "readme", "comment", "guide"],
-            ),
-        ],
-        llm=LLMConfig(
-            provider="openai",
-            model="gpt-4",
-            guardrails=[
-                "Never disable security features",
-                "Always validate user input",
-                "Prefer explicit over implicit",
-                "No hardcoded credentials",
+    # Write config
+    with open(config_path, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    # Success message
+    console.print()
+    console.print(Panel(
+        "[bold green]✓ config created![/bold green]\n\n"
+        f"[dim]provider:[/dim] {provider}\n"
+        f"[dim]config:[/dim] .deburger.yml\n\n"
+        "[yellow]next steps:[/yellow]\n"
+        "1. Configure cloud credentials\n"
+        "2. Run: [cyan]deburger check[/cyan]\n"
+        "3. Commit code and watch costs!",
+        title="[bold]🍔 deburger initialized[/bold]",
+        border_style="green",
+        box=box.ROUNDED
+    ))
+
+    # Setup git hooks
+    _setup_git_hooks()
+
+
+def _default_config(provider: str) -> dict:
+    """Generate default configuration."""
+
+    config = {
+        "version": "2.0",
+        "providers": {
+            "aws": {
+                "enabled": provider == "aws",
+                "region": "us-east-1",
+                "profile": "default"
+            },
+            "gcp": {
+                "enabled": provider == "gcp",
+                "project_id": "${GCP_PROJECT_ID}",
+                "region": "us-central1"
+            },
+            "azure": {
+                "enabled": provider == "azure",
+                "subscription_id": "${AZURE_SUBSCRIPTION_ID}",
+                "region": "eastus"
+            }
+        },
+        "budget": {
+            "monthly_limit": 10000,
+            "alert_threshold": 0.8,
+            "block_threshold": 1.0,
+            "deployment": {
+                "max_increase_dollars": 500,
+                "max_increase_percent": 20
+            }
+        },
+        "traffic": {
+            "requests_per_day": 100000,
+            "avg_response_time_ms": 200,
+            "peak_multiplier": 3.0
+        },
+        "analysis": {
+            "languages": ["python", "javascript", "typescript", "go"],
+            "ignore_patterns": [
+                "node_modules/**",
+                "venv/**",
+                ".venv/**",
+                "*.test.js",
+                "test_*.py",
+                "__pycache__/**"
             ],
-        ),
-        security=SecurityConfig(
-            enabled=True,
-            fail_on_high=True,
-            fail_on_critical=True,
-            ignore_patterns=["tests/", "docs/", "examples/"],
-        ),
-        metrics=MetricsConfig(
-            min_quality_score=70,
-            max_complexity=10,
-            min_test_coverage=80,
-        ),
+            "detect": {
+                "n_plus_one_queries": True,
+                "sequential_async": True,
+                "over_provisioned_resources": True,
+                "missing_caching": True,
+                "large_responses": True
+            }
+        },
+        "hooks": {
+            "pre_commit": {
+                "enabled": True,
+                "block_on_exceed": True,
+                "show_fixes": True
+            }
+        },
+        "optimize": {
+            "auto_apply": False,
+            "create_branch": True,
+            "run_tests_after": True
+        }
+    }
+
+    return config
+
+
+def _interactive_setup() -> dict:
+    """Interactive configuration setup."""
+
+    console.print("\n🍔 [bold cyan]deburger setup wizard[/bold cyan]\n")
+
+    # Cloud provider
+    provider = Prompt.ask(
+        "Cloud provider",
+        choices=["aws", "gcp", "azure"],
+        default="aws"
     )
 
-    # Save configuration
-    config.save(str(config_path))
-    console.print(f"[green]done:[/green] created {config_path}")
+    # Budget
+    monthly_budget = Prompt.ask(
+        "Monthly cloud budget (USD)",
+        default="10000"
+    )
 
-    # Update .gitignore
-    _update_gitignore()
+    # Traffic
+    requests_per_day = Prompt.ask(
+        "Expected requests per day",
+        default="100000"
+    )
 
-    # Show next steps
-    console.print("\n[bold cyan]what's next:[/bold cyan]")
-    console.print("  1. set your api key: [cyan]export OPENAI_API_KEY=your-key[/cyan]")
-    console.print("  2. code something with AI")
-    console.print("  3. commit: [cyan]git commit -m 'your changes'[/cyan]")
-    console.print("  4. run: [cyan]deburger analyze[/cyan]")
-    console.print()
-    console.print("[dim]edit .deburger.yml to tweak goals and settings[/dim]")
+    # Build config
+    config = _default_config(provider)
+    config["budget"]["monthly_limit"] = int(monthly_budget)
+    config["traffic"]["requests_per_day"] = int(requests_per_day)
 
-    logger.info("Initialized deburger", requirement=requirement)
+    # Additional provider config
+    if provider == "aws":
+        region = Prompt.ask("AWS region", default="us-east-1")
+        profile = Prompt.ask("AWS profile", default="default")
+        config["providers"]["aws"]["region"] = region
+        config["providers"]["aws"]["profile"] = profile
+
+    elif provider == "gcp":
+        project = Prompt.ask("GCP project ID")
+        region = Prompt.ask("GCP region", default="us-central1")
+        config["providers"]["gcp"]["project_id"] = project
+        config["providers"]["gcp"]["region"] = region
+
+    elif provider == "azure":
+        subscription = Prompt.ask("Azure subscription ID")
+        region = Prompt.ask("Azure region", default="eastus")
+        config["providers"]["azure"]["subscription_id"] = subscription
+        config["providers"]["azure"]["region"] = region
+
+    return config
 
 
-def _interactive_setup() -> str:
-    """Interactive configuration wizard."""
-    console.print("[bold]quick setup[/bold]\n")
+def _setup_git_hooks():
+    """Setup git pre-commit hook."""
 
-    requirement = Prompt.ask("what's your main goal for this project?")
+    git_dir = Path(".git")
+    if not git_dir.exists():
+        console.print("[dim]no git repo found - skipping hooks[/dim]")
+        return
 
-    console.print(f"\n[green]got it:[/green] {requirement}")
-    console.print("\n[dim]you can tweak sub-goals by editing .deburger.yml[/dim]\n")
+    hooks_dir = git_dir / "hooks"
+    hooks_dir.mkdir(exist_ok=True)
 
-    return requirement
+    pre_commit = hooks_dir / "hooks" / "pre-commit"
 
+    if pre_commit.exists():
+        # Backup existing hook
+        console.print("[dim]backing up existing pre-commit hook[/dim]")
+        pre_commit.rename(pre_commit.with_suffix(".backup"))
 
-def _update_gitignore():
-    """Add deburger files to .gitignore."""
-    gitignore_path = Path(".gitignore")
+    # Write hook
+    hook_content = """#!/bin/bash
+# deburger pre-commit hook
+# Checks cloud costs before commit
 
-    entries_to_add = [
-        ".deburger.cache",
-        ".deburger/logs/",
-    ]
+echo "🍔 deburger checking costs..."
 
-    if gitignore_path.exists():
-        gitignore_content = gitignore_path.read_text()
+# Run deburger check on staged files
+deburger check
 
-        new_entries = []
-        for entry in entries_to_add:
-            if entry not in gitignore_content:
-                new_entries.append(entry)
+exit_code=$?
 
-        if new_entries:
-            with gitignore_path.open("a") as f:
-                f.write("\n# deburger\n")
-                for entry in new_entries:
-                    f.write(f"{entry}\n")
-            console.print(f"[green]done:[/green] updated .gitignore")
-    else:
-        with gitignore_path.open("w") as f:
-            f.write("# deburger\n")
-            for entry in entries_to_add:
-                f.write(f"{entry}\n")
-        console.print(f"[green]done:[/green] created .gitignore")
+if [ $exit_code -ne 0 ]; then
+    echo ""
+    echo "⚠️  Cost check failed!"
+    echo "Run 'deburger check --verbose' for details"
+    echo ""
+    exit 1
+fi
+
+exit 0
+"""
+
+    pre_commit.write_text(hook_content)
+    pre_commit.chmod(0o755)
+
+    console.print("[dim]✓ git pre-commit hook installed[/dim]")
