@@ -77,7 +77,7 @@ async def run_debug_workflow(
         return
 
     # Classify errors
-    console.print("🔍 Analyzing errors...\n")
+    console.print("analyzing errors...\n")
     classifications = {}
     for error in result.errors:
         classification = classifier.classify(error)

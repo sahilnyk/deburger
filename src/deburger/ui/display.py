@@ -26,10 +26,10 @@ class DeburgerUI:
         self.console.print(f"[red]✗[/red] {text}")
 
     def warning(self, text: str):
-        self.console.print(f"[yellow]⚠[/yellow] {text}")
+        self.console.print(f"[yellow]warning:[/yellow] {text}")
 
     def info(self, text: str):
-        self.console.print(f"[cyan]→[/cyan] {text}")
+        self.console.print(f"[cyan]info:[/cyan] {text}")
 
     def progress_bar(self, description: str):
         return Progress(
@@ -55,12 +55,21 @@ class DeburgerUI:
 
         if progress < 0.3:
             color = "red"
-        elif progress < 0.7:
+            vibe = "just getting started"
+        elif progress < 0.5:
             color = "yellow"
+            vibe = "making moves"
+        elif progress < 0.8:
+            color = "yellow"
+            vibe = "grinding"
+        elif progress < 0.95:
+            color = "green"
+            vibe = "almost there"
         else:
             color = "green"
+            vibe = "crushing it"
 
-        return f"[{color}]{bar}[/{color}] {percentage}"
+        return f"[{color}]{bar}[/{color}] {percentage} [dim]({vibe})[/dim]"
 
     def subgoals_table(self, subgoals: list):
         table = Table(title="Sub-Goals Progress", box=box.ROUNDED)
@@ -69,7 +78,7 @@ class DeburgerUI:
         table.add_column("Status", justify="center", style="yellow", width=8)
 
         for goal in subgoals:
-            status = "✓" if goal.completion >= 0.9 else "↑" if goal.completion >= 0.5 else "⚠"
+            status = "✓" if goal.completion >= 0.9 else "..." if goal.completion >= 0.5 else "○"
             progress_bar = self._mini_progress_bar(goal.completion)
             table.add_row(goal.description, progress_bar, status)
 

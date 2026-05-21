@@ -18,7 +18,7 @@ def run_analyze(since: str, verbose: bool = False):
     logger = get_logger()
     logger.log_command("analyze", since=since, verbose=verbose)
 
-    console.print("[bold cyan]analyzing your code...[/bold cyan]\n")
+    console.print("🍔 [bold cyan]analyzing your code...[/bold cyan]\n")
 
     # Load configuration
     try:
@@ -44,11 +44,12 @@ def run_analyze(since: str, verbose: bool = False):
 
     # Run analysis with progress indicator
     with Progress(
-        SpinnerColumn(),
+        SpinnerColumn(spinner_name="bouncingBall"),
+        TextColumn("🍔"),
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        task = progress.add_task("Analyzing code changes...", total=None)
+        task = progress.add_task("analyzing code changes...", total=None)
 
         try:
             orchestrator = DeburgerOrchestrator(requirement, config.llm.guardrails)
@@ -59,8 +60,8 @@ def run_analyze(since: str, verbose: bool = False):
             return
 
     if result.files_changed == 0:
-        console.print("[yellow]warning:[/yellow] no changes found since {since}")
-        console.print("\n[dim]make some changes and commit, then run analyze again[/dim]")
+        console.print("[yellow]heads up:[/yellow] no changes found since {since}")
+        console.print("\n[dim]make some changes and commit, then run this again[/dim]")
         return
 
     # Display results
@@ -93,7 +94,7 @@ def run_analyze(since: str, verbose: bool = False):
     next_goal = [g for g in requirement.sub_goals if g.completion < 0.9]
     if next_goal:
         console.print(
-            f"[bold cyan]work on next:[/bold cyan] {next_goal[0].description}"
+            f"[bold cyan]up next:[/bold cyan] {next_goal[0].description}"
         )
 
     # Log results

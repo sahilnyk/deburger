@@ -20,7 +20,7 @@ def run_security_scan(path: str, severity: str = "all", fix: bool = False):
     logger = get_logger()
     logger.log_command("scan", path=path, severity=severity, fix=fix)
 
-    console.print("[bold cyan]scanning for security issues...[/bold cyan]\n")
+    console.print("🍔 [bold cyan]scanning for security issues...[/bold cyan]\n")
 
     # Load config for ignore patterns
     try:

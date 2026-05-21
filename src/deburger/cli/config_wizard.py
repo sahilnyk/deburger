@@ -177,7 +177,7 @@ def run_config_wizard():
 
         console.print()
         console.print(Panel.fit(
-            "[bold green]✓ Configuration saved![/bold green]\n\n"
+            "[bold green]✓ config saved![/bold green]\n\n"
             f"Config file: [cyan]{config_path}[/cyan]\n"
             "You can edit it manually anytime.\n\n"
             "Ready to go! Try: [yellow]deburger run[/yellow]",
