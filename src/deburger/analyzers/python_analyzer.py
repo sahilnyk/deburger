@@ -24,15 +24,19 @@ class PythonAnalyzer(BaseAnalyzer):
         try:
             tree = self.parse_ast(code)
         except SyntaxError:
-            # Invalid Python, skip
             return issues
 
-        # Run detectors
         if config.get("detect", {}).get("n_plus_one_queries", True):
             issues.extend(self._detect_n_plus_one(tree, file_path, code))
 
         if config.get("detect", {}).get("sequential_async", True):
             issues.extend(self._detect_sequential_async(tree, file_path, code))
+
+        # run all pattern detectors
+        from deburger.analyzers.patterns import ALL_PATTERNS
+        for detector in ALL_PATTERNS:
+            if detector.can_detect(file_path):
+                issues.extend(detector.detect(file_path, code, config))
 
         return issues
 

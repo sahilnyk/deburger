@@ -295,6 +295,35 @@ def hook(
         console.print("[dim]use --install or --uninstall[/dim]")
 
 
+@app.command(name="pr-comment")
+def pr_comment(
+    pr: int = typer.Argument(..., help="PR number"),
+    base: str = typer.Option("main", "--base", help="Base branch"),
+):
+    """Post cost impact comment on a GitHub PR."""
+    asyncio.run(_pr_comment(pr, base))
+
+
+async def _pr_comment(pr: int, base: str):
+    from deburger.integrations import generate_pr_comment, post_pr_comment
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("analyzing PR cost impact...", total=None)
+        comment = await generate_pr_comment(base=base)
+
+    if not comment:
+        console.print("[green]no cost impact detected[/green]")
+        return
+
+    console.print(comment)
+    post_pr_comment(pr, comment)
+    console.print(f"\n[green]comment posted on PR #{pr}[/green]")
+
+
 @app.command()
 def version():
     """Show version."""
