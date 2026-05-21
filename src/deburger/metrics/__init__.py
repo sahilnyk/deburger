@@ -1,1 +1,0 @@
-"""Code quality metrics calculation."""
