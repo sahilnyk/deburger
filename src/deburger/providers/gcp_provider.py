@@ -75,18 +75,48 @@ class GCPProvider(CloudProvider):
         region: str,
         resource_type: ResourceType
     ) -> PricingData:
-        """Fetch GCP pricing data."""
-
-        return PricingData(
-            provider="gcp",
-            region=region,
-            resource_type=resource_type,
-            prices={
-                "cloud_function_gb_second": Decimal("0.0000025"),
-                "cloud_function_request": Decimal("0.0000004"),
-            },
-            updated_at="2026-05-21"
-        )
+        if resource_type == ResourceType.LAMBDA:
+            return PricingData(
+                provider="gcp",
+                region=region,
+                resource_type=resource_type,
+                gb_second_cost=Decimal("0.0000025"),
+                request_cost=Decimal("0.0000004"),
+                io_cost=Decimal("0"),
+                storage_cost=Decimal("0"),
+                prices={
+                    "gb_second": Decimal("0.0000025"),
+                    "request": Decimal("0.0000004"),
+                },
+                updated_at="2026-05-21"
+            )
+        elif resource_type == ResourceType.DATABASE:
+            return PricingData(
+                provider="gcp",
+                region=region,
+                resource_type=resource_type,
+                gb_second_cost=Decimal("0"),
+                request_cost=Decimal("0"),
+                io_cost=Decimal("0.0000003"),
+                storage_cost=Decimal("0.17"),
+                prices={
+                    "io_operation": Decimal("0.0000003"),
+                    "storage_gb_month": Decimal("0.17"),
+                },
+                updated_at="2026-05-21"
+            )
+        else:
+            return PricingData(
+                provider="gcp",
+                region=region,
+                resource_type=resource_type,
+                gb_second_cost=Decimal("0"),
+                request_cost=Decimal("0"),
+                io_cost=Decimal("0"),
+                storage_cost=Decimal("0"),
+                prices={},
+                updated_at="2026-05-21"
+            )
 
     def optimize(
         self,

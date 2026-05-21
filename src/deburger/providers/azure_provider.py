@@ -75,18 +75,48 @@ class AzureProvider(CloudProvider):
         region: str,
         resource_type: ResourceType
     ) -> PricingData:
-        """Fetch Azure pricing data."""
-
-        return PricingData(
-            provider="azure",
-            region=region,
-            resource_type=resource_type,
-            prices={
-                "function_gb_second": Decimal("0.000016"),
-                "function_request": Decimal("0.0000002"),
-            },
-            updated_at="2026-05-21"
-        )
+        if resource_type == ResourceType.LAMBDA:
+            return PricingData(
+                provider="azure",
+                region=region,
+                resource_type=resource_type,
+                gb_second_cost=Decimal("0.000016"),
+                request_cost=Decimal("0.0000002"),
+                io_cost=Decimal("0"),
+                storage_cost=Decimal("0"),
+                prices={
+                    "gb_second": Decimal("0.000016"),
+                    "request": Decimal("0.0000002"),
+                },
+                updated_at="2026-05-21"
+            )
+        elif resource_type == ResourceType.DATABASE:
+            return PricingData(
+                provider="azure",
+                region=region,
+                resource_type=resource_type,
+                gb_second_cost=Decimal("0"),
+                request_cost=Decimal("0"),
+                io_cost=Decimal("0.00025"),
+                storage_cost=Decimal("0.115"),
+                prices={
+                    "io_operation": Decimal("0.00025"),
+                    "storage_gb_month": Decimal("0.115"),
+                },
+                updated_at="2026-05-21"
+            )
+        else:
+            return PricingData(
+                provider="azure",
+                region=region,
+                resource_type=resource_type,
+                gb_second_cost=Decimal("0"),
+                request_cost=Decimal("0"),
+                io_cost=Decimal("0"),
+                storage_cost=Decimal("0"),
+                prices={},
+                updated_at="2026-05-21"
+            )
 
     def optimize(
         self,
