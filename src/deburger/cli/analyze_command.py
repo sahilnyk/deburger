@@ -2,7 +2,11 @@
 
 from pathlib import Path
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.panel import Panel
+from rich.text import Text
+from rich import box
+import time
 
 console = Console()
 
@@ -18,7 +22,14 @@ def run_analyze(since: str, verbose: bool = False):
     logger = get_logger()
     logger.log_command("analyze", since=since, verbose=verbose)
 
-    console.print("🍔 [bold cyan]analyzing your code...[/bold cyan]\n")
+    console.print()
+    console.print(Panel(
+        "[bold cyan]🍔 Code Analysis[/bold cyan]\n"
+        "[dim]scanning changes, checking quality, tracking progress[/dim]",
+        border_style="cyan",
+        box=box.DOUBLE
+    ))
+    console.print()
 
     # Load configuration
     try:
@@ -42,33 +53,66 @@ def run_analyze(since: str, verbose: bool = False):
         ],
     )
 
-    # Run analysis with progress indicator
+    # Run analysis with cool progress animation
     with Progress(
-        SpinnerColumn(spinner_name="bouncingBall"),
+        SpinnerColumn(spinner_name="dots"),
         TextColumn("🍔"),
         TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TaskProgressColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task("analyzing code changes...", total=None)
+        task = progress.add_task("analyzing code changes", total=100)
+
+        # Simulate analysis stages
+        progress.update(task, description="scanning files", completed=20)
+        time.sleep(0.2)
+        progress.update(task, description="checking security", completed=50)
+        time.sleep(0.2)
+        progress.update(task, description="calculating metrics", completed=80)
+        time.sleep(0.2)
 
         try:
             orchestrator = DeburgerOrchestrator(requirement, config.llm.guardrails)
             result = orchestrator.analyze_changes(since)
+            progress.update(task, description="finalizing", completed=100)
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
-            console.print(f"\n[red]Error:[/red] {e}")
+            console.print()
+            console.print(Panel(
+                f"[red]Analysis failed:[/red]\n{e}",
+                title="[bold red]Error[/bold red]",
+                border_style="red",
+                box=box.ROUNDED
+            ))
             return
 
     if result.files_changed == 0:
-        console.print("[yellow]heads up:[/yellow] no changes found since {since}")
-        console.print("\n[dim]make some changes and commit, then run this again[/dim]")
+        console.print()
+        console.print(Panel(
+            "[yellow]heads up - no changes detected[/yellow]\n\n"
+            f"[dim]no commits found since {since}[/dim]\n"
+            "[dim]make some changes, commit, then run again[/dim]",
+            title="[bold yellow]No Changes[/bold yellow]",
+            border_style="yellow",
+            box=box.ROUNDED
+        ))
         return
 
-    # Display results
-    console.print(
-        f"\n[bold]Files:[/bold] {result.files_changed} | "
-        f"[green]+{result.lines_added}[/green] [red]-{result.lines_removed}[/red]\n"
-    )
+    # Display cool change summary
+    console.print()
+    change_text = Text()
+    change_text.append("Files Changed: ", style="bold cyan")
+    change_text.append(f"{result.files_changed}  ", style="white")
+    change_text.append("│  ", style="dim")
+    change_text.append("+", style="green bold")
+    change_text.append(f"{result.lines_added} ", style="green")
+    change_text.append("│  ", style="dim")
+    change_text.append("-", style="red bold")
+    change_text.append(f"{result.lines_removed}", style="red")
+
+    console.print(Panel(change_text, border_style="cyan", box=box.SIMPLE))
+    console.print()
 
     ui.console.print(ui.requirement_panel(requirement.description, result.requirement_progress))
     ui.console.print()

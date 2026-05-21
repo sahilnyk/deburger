@@ -68,6 +68,7 @@ def scan(
     path: str = typer.Argument(".", help="Path to scan (default: current directory)"),
     severity: str = typer.Option("all", "--severity", help="Minimum severity: low, medium, high, critical"),
     fix: bool = typer.Option(False, "--fix", help="Auto-fix issues where possible"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show fixes without applying"),
 ):
     """
     Scan code for security vulnerabilities.
@@ -76,10 +77,30 @@ def scan(
         deburger scan                       # Scan current directory
         deburger scan src/                  # Scan specific directory
         deburger scan --severity high       # Show only high+ severity
+        deburger scan --fix                 # Auto-fix issues
+        deburger scan --fix --dry-run       # Preview fixes
     """
     from deburger.cli.security_command import run_security_scan
 
-    run_security_scan(path, severity, fix)
+    run_security_scan(path, severity, fix, dry_run)
+
+
+@app.command()
+def watch(
+    path: str = typer.Argument(".", help="Path to watch"),
+    interval: float = typer.Option(2.0, "--interval", "-i", help="Scan interval in seconds"),
+):
+    """
+    Watch directory for changes and scan continuously.
+
+    Examples:
+        deburger watch                      # Watch current directory
+        deburger watch src/                 # Watch specific directory
+        deburger watch --interval 5         # Scan every 5 seconds
+    """
+    from deburger.cli.watch_command import run_watch
+
+    run_watch(path, interval)
 
 
 @app.command()
