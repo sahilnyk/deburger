@@ -58,6 +58,7 @@ class FastScanner:
         ignore_patterns = self.config.get("ignore", [
             "node_modules", "venv", ".venv", "__pycache__",
             "test_", "_test.py", ".test.", "spec.",
+            "site-packages", "deburger/analyzers/patterns",
         ])
         files = [f for f in files if not any(ig in str(f) for ig in ignore_patterns)]
 
