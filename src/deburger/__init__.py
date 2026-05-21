@@ -1,4 +1,4 @@
-"""deburger - AI Code Quality Guardian"""
+"""deburger - catch expensive code before it ships"""
 
 from deburger._version import __version__
 
