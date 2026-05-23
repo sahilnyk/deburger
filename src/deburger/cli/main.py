@@ -17,6 +17,18 @@ app = typer.Typer(
 console = Console()
 
 
+@app.callback(invoke_without_command=True)
+def root(
+    ctx: typer.Context,
+    version: bool = typer.Option(False, "--version", help="Show version", is_eager=True),
+):
+    if version:
+        from deburger import __version__
+
+        console.print(f"deburger v{__version__}")
+        raise typer.Exit()
+
+
 @app.command()
 def init(
     provider: str = typer.Option("aws", "--provider", "-p", help="Cloud provider: aws, gcp, azure"),
