@@ -68,7 +68,7 @@ async def _check(path: str, verbose: bool, incremental: bool) -> bool:
     from deburger.config import load_config
     from deburger.scanner import FastScanner
     from deburger.cost import CostEngine, TrafficEstimate
-    from deburger.providers.registry import ProviderRegistry
+    from deburger.providers import ProviderRegistry
 
     config = load_config()
 
