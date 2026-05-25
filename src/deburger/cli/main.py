@@ -57,14 +57,15 @@ def check(
     path: str = typer.Argument(".", help="Path to analyze"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed breakdown"),
     incremental: bool = typer.Option(True, "--incremental/--full", help="Only scan changed files"),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON"),
 ):
     """Scan code and predict cloud costs."""
-    has_issues = asyncio.run(_check(path, verbose, incremental))
+    has_issues = asyncio.run(_check(path, verbose, incremental, json_output))
     if has_issues:
         raise typer.Exit(code=1)
 
 
-async def _check(path: str, verbose: bool, incremental: bool) -> bool:
+async def _check(path: str, verbose: bool, incremental: bool, json_output: bool = False) -> bool:
     from deburger.config import load_config
     from deburger.scanner import FastScanner
     from deburger.cost import CostEngine, TrafficEstimate
@@ -99,6 +100,32 @@ async def _check(path: str, verbose: bool, incremental: bool) -> bool:
             results = await engine.calculate_total_savings(issues, traffic)
         else:
             results = None
+
+    # JSON output for CI
+    if json_output:
+        import json
+        output = {
+            "issues": [
+                {
+                    "file": issue.file_path,
+                    "line": issue.line_number,
+                    "type": issue.type.value,
+                    "severity": issue.severity.value,
+                    "description": issue.description,
+                    "monthly_cost": float(issue.estimated_monthly_cost),
+                    "savings": float(issue.savings_monthly) if issue.savings_monthly else 0,
+                    "fix": issue.fix_suggestion,
+                }
+                for issue in issues
+            ],
+            "summary": {
+                "total_issues": len(issues),
+                "total_monthly_cost": float(results["total_savings"]) if results else 0,
+                "savings_percentage": results["savings_percentage"] if results else 0,
+            },
+        }
+        print(json.dumps(output, indent=2))
+        return True
 
     # display results
     console.print()
