@@ -35,7 +35,7 @@ ruff = "^0.1.0"
 black = "^24.1.0"
 
 [tool.poetry.scripts]
-deburger = "deburger.cli.main:app"
+deburger = "deburger.cli.main:main"
 
 [build-system]
 requires = ["poetry-core"]
