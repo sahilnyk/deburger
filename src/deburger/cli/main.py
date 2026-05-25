@@ -180,8 +180,19 @@ async def _optimize(path: str, auto_apply: bool, dry_run: bool):
             return
 
         progress.update(task, description=f"generating fixes for {len(issues)} issues...")
+
+        # read file contents for all affected files
+        file_contents = {}
+        for issue in issues:
+            if issue.file_path not in file_contents:
+                try:
+                    with open(issue.file_path, 'r', encoding='utf-8') as f:
+                        file_contents[issue.file_path] = f.read()
+                except Exception:
+                    pass
+
         fixer = CodeFixer()
-        fixes = await fixer.generate_all_fixes(issues, {})
+        fixes = await fixer.generate_all_fixes(issues, file_contents)
 
     if not fixes:
         console.print("\n[yellow]found issues but couldn't auto-generate fixes[/yellow]")
