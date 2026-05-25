@@ -297,11 +297,12 @@ class CostEngine:
         return pricing_dict
 
     async def calculate_total_savings(self, issues: List[Issue], traffic: TrafficEstimate) -> Dict:
-        # calculate all issues in parallel for speed
         import asyncio
 
         tasks = [self.calculate_issue_cost(issue, traffic) for issue in issues]
-        breakdowns = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        breakdowns = [r for r in results if isinstance(r, CostBreakdown)]
 
         total_savings = sum(b.savings for b in breakdowns)
         total_current = sum(b.current_cost for b in breakdowns)
@@ -315,11 +316,13 @@ class CostEngine:
             by_resource[rt]["count"] += 1
             by_resource[rt]["savings"] += breakdown.savings
 
+        savings_pct = float((total_savings / total_current * 100)) if total_current > 0 else 0.0
+
         return {
             "total_current_cost": total_current,
             "total_optimized_cost": total_optimized,
             "total_savings": total_savings,
-            "savings_percentage": float((total_savings / total_current * 100) if total_current > 0 else 0),
+            "savings_percentage": savings_pct,
             "issues_count": len(issues),
             "breakdowns": breakdowns,
             "by_resource_type": by_resource,
