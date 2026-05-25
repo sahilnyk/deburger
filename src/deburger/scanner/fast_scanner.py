@@ -1,7 +1,8 @@
+import os
 import asyncio
 from pathlib import Path
 from typing import List, Dict, Set
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from deburger.analyzers.base import Issue
@@ -19,7 +20,7 @@ class ScanResult:
 class FastScanner:
     def __init__(self, config: dict, max_workers: int = None):
         self.config = config
-        self.max_workers = max_workers or min(32, (asyncio.cpu_count() or 1) * 4)
+        self.max_workers = max_workers or min(32, (os.cpu_count() or 1) * 4)
         self.file_cache = {}
 
     async def scan_path(self, path: str, incremental: bool = True) -> List[Issue]:
@@ -112,8 +113,7 @@ class FastScanner:
     async def _scan_files_parallel(self, files: List[Path]) -> List[ScanResult]:
         loop = asyncio.get_event_loop()
 
-        # process pool for cpu-bound ast parsing
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             tasks = [
                 loop.run_in_executor(
                     executor,
