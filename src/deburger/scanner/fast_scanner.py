@@ -80,7 +80,7 @@ class FastScanner:
         import subprocess
 
         try:
-            # get changed files from git
+            # get changed files from git (unstaged)
             result = subprocess.run(
                 ["git", "diff", "--name-only", "HEAD"],
                 capture_output=True,
@@ -104,7 +104,24 @@ class FastScanner:
             if result.returncode == 0:
                 changed.update(result.stdout.strip().split("\n"))
 
-            return [f for f in files if str(f) in changed]
+            # also check untracked files
+            result = subprocess.run(
+                ["git", "ls-files", "--others", "--exclude-standard"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode == 0:
+                changed.update(result.stdout.strip().split("\n"))
+
+            # resolve changed paths to absolute for comparison
+            changed_resolved = set()
+            for c in changed:
+                if c:
+                    changed_resolved.add(Path(c).resolve())
+
+            return [f for f in files if f.resolve() in changed_resolved]
 
         except Exception:
             # git failed, scan everything
