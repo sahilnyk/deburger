@@ -38,7 +38,22 @@ class PythonAnalyzer(BaseAnalyzer):
             if detector.can_detect(file_path):
                 issues.extend(detector.detect(file_path, code, config))
 
+        # filter out suppressed lines
+        lines = code.split("\n")
+        issues = [
+            i for i in issues
+            if not self._is_suppressed(lines, i.line_number)
+        ]
+
         return issues
+
+    def _is_suppressed(self, lines: List[str], line_number: int) -> bool:
+        idx = line_number - 1
+        if idx < len(lines) and "deburger:ignore" in lines[idx]:
+            return True
+        if idx > 0 and "deburger:ignore" in lines[idx - 1]:
+            return True
+        return False
 
     def parse_ast(self, code: str) -> ast.AST:
         """Parse Python code into AST."""
