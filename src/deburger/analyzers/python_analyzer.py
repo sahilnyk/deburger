@@ -165,7 +165,8 @@ class PythonAnalyzer(BaseAnalyzer):
                 issues.append(self._create_sequential_async_issue(
                     awaits,
                     file_path,
-                    lines
+                    lines,
+                    config
                 ))
 
         return issues
