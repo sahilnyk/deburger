@@ -59,10 +59,12 @@ def check(
     incremental: bool = typer.Option(True, "--incremental/--full", help="Only scan changed files"),
 ):
     """Scan code and predict cloud costs."""
-    asyncio.run(_check(path, verbose, incremental))
+    has_issues = asyncio.run(_check(path, verbose, incremental))
+    if has_issues:
+        raise typer.Exit(code=1)
 
 
-async def _check(path: str, verbose: bool, incremental: bool):
+async def _check(path: str, verbose: bool, incremental: bool) -> bool:
     from deburger.config import load_config
     from deburger.scanner import FastScanner
     from deburger.cost import CostEngine, TrafficEstimate
@@ -84,7 +86,7 @@ async def _check(path: str, verbose: bool, incremental: bool):
         if not issues:
             progress.stop()
             console.print("\n[green]no expensive patterns found - ur good[/green]")
-            return
+            return False
 
         # calculate costs
         progress.update(task, description="calculating costs...")
@@ -145,6 +147,8 @@ async def _check(path: str, verbose: bool, incremental: bool):
             console.print(f"[dim]{issue.explanation}[/dim]")
             if issue.fix_suggestion:
                 console.print(f"[green]fix:[/green] {issue.fix_suggestion}")
+
+    return True
 
 
 @app.command()
