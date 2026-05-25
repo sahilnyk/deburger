@@ -97,8 +97,8 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         for i, line in enumerate(lines, 1):
             if re.match(r'\s*(const|let|var).*=\s*await\s+', line):
                 await_lines.append(i)
-            elif await_lines:
-                if len(await_lines) >= 2 and await_lines[-1] == i - 1:
+            else:
+                if len(await_lines) >= 2:
                     first = await_lines[0]
                     last = await_lines[-1]
                     code_snippet = "\n".join(lines[first - 1:last])
@@ -134,5 +134,27 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                     ))
 
                 await_lines = []
+
+        # check trailing awaits at end of file
+        if len(await_lines) >= 2:
+            first = await_lines[0]
+            last = await_lines[-1]
+            code_snippet = "\n".join(lines[first - 1:last])
+            saved_seconds = len(await_lines) - 1
+            monthly_requests = config.get("traffic", {}).get("requests_per_day", 100000) * 30
+            savings = Decimal(monthly_requests) * Decimal(saved_seconds) * Decimal("0.0000166667")
+
+            issues.append(Issue(
+                type=IssueType.SEQUENTIAL_ASYNC,
+                severity=Severity.HIGH,
+                file_path=file_path,
+                line_number=first,
+                code_snippet=code_snippet,
+                estimated_monthly_cost=savings,
+                description=f"Sequential await calls ({len(await_lines)} calls)",
+                explanation=f"Found {len(await_lines)} sequential awaits. Running parallel would save ~{saved_seconds}s per request.",
+                fix_suggestion="Use Promise.all():\nconst [result1, result2] = await Promise.all([\n    call1(),\n    call2()\n]);",
+                savings_monthly=savings
+            ))
 
         return issues
