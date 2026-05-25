@@ -302,25 +302,25 @@ class CodeFixer:
         return line[:len(line) - len(line.lstrip())]
 
     async def generate_all_fixes(self, issues: List[Issue], file_contents: Dict[str, str]) -> List[Fix]:
-        # generate fixes in parallel with caching
         import asyncio
 
         async def generate_one(issue):
             file_content = file_contents.get(issue.file_path)
             if not file_content:
-                # try cache first
                 file_content = self.file_cache.get(issue.file_path)
-                if not file_content:
+            if not file_content:
+                try:
+                    with open(issue.file_path, 'r', encoding='utf-8') as f:
+                        file_content = f.read()
+                except Exception:
                     return None
 
-            # run in thread pool since generate_fix is cpu-bound
             loop = asyncio.get_event_loop()
             fix = await loop.run_in_executor(None, self.generate_fix, issue, file_content)
             if fix:
                 self.fixes_generated += 1
             return fix
 
-        # process all issues concurrently
         tasks = [generate_one(issue) for issue in issues]
         results = await asyncio.gather(*tasks)
 
