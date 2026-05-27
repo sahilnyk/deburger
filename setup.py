@@ -16,7 +16,7 @@ else:
 setup(
     name="deburger",
     version=version,
-    description="AI Code Quality Guardian - Monitor AI-generated code quality",
+    description="Static analysis tool that detects expensive cloud code patterns and estimates cost impact before deployment",
     long_description=readme,
     long_description_content_type="text/markdown",
     author="Sahil Nayak",
@@ -62,7 +62,9 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Quality Assurance",
         "Topic :: Software Development :: Testing",
-        "Topic :: Security",
+        "Topic :: System :: Monitoring",
+        "Environment :: Console",
+        "Operating System :: OS Independent",
     ],
-    keywords="ai code-quality security monitoring testing vulnerability-detection",
+    keywords="cloud cost-optimization static-analysis aws gcp azure cost-monitoring devops finops",
 )
