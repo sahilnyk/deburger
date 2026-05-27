@@ -200,7 +200,3 @@ Open an issue with:
 - Open a discussion on GitHub
 - Check existing issues
 - Review the code (it's well-documented)
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.

@@ -1,6 +1,6 @@
-# deburger
+# 🍔 deburger
 
-Catch expensive cloud code before it ships. Static analysis tool that scans your codebase, detects costly patterns, and estimates your monthly cloud bill impact.
+Catch expensive cloud code before it ships. Analyzes your codebase, detects costly patterns, and estimates your monthly cloud bill impact.
 
 ## The Problem
 
@@ -8,7 +8,7 @@ Developers write code. Cloud bills arrive. Nobody connects the dots until it's t
 
 ## The Solution
 
-**deburger** analyzes your code during development and tells you exactly which lines will cost money in production. No cloud credentials needed. No runtime overhead. Just static analysis that catches expensive patterns before they deploy.
+**deburger** analyzes your code during development and tells you exactly which lines will cost money in production. No cloud credentials needed. No runtime overhead. Catches expensive patterns before they deploy.
 
 ## Install
 
@@ -42,23 +42,29 @@ savings: 99.8%
 
 ## What It Detects
 
-**S3/Storage in Loops** - Individual API calls instead of batch operations  
-**Missing Connection Pools** - New database connections per request  
-**Unbounded Queries** - SELECT * without LIMIT causes timeouts and cost  
-**Cold Start Issues** - Heavy imports in Lambda functions add latency  
-**Sequential Async** - Awaiting in sequence instead of parallel execution  
-**Expensive Logging** - High-volume logs in hot paths
+| Pattern | Description |
+|---------|-------------|
+| S3/Storage in Loops | Individual API calls instead of batch operations |
+| Missing Connection Pools | New database connections per request |
+| Unbounded Queries | SELECT * without LIMIT causes timeouts and cost |
+| Cold Start Issues | Heavy imports in Lambda functions add latency |
+| Sequential Async | Awaiting in sequence instead of parallel execution |
+| Expensive Logging | High-volume logs in hot paths |
 
 ## Languages Supported
 
-- Python (AST-based analysis)
-- JavaScript/TypeScript (pattern detection)
+| Language | Method |
+|----------|--------|
+| Python | AST-based analysis |
+| JavaScript/TypeScript | Pattern detection |
 
 ## Cloud Providers
 
-- AWS
-- Google Cloud Platform
-- Microsoft Azure
+| Provider | Status |
+|----------|--------|
+| AWS | ✓ |
+| Google Cloud Platform | ✓ |
+| Microsoft Azure | ✓ |
 
 ## Commands
 
@@ -127,33 +133,21 @@ More accurate traffic estimates = more accurate cost predictions.
 
 ## Why deburger?
 
-**Static Analysis** - No runtime overhead, no performance impact  
-**No Credentials Required** - Analyzes code locally, never touches your cloud  
-**Developer-First** - Integrates into existing workflows (git, CI/CD, IDE)  
-**Language Agnostic** - Works with Python and JavaScript, more coming  
-**Provider Agnostic** - Supports AWS, GCP, Azure with same patterns
+| Feature | Benefit |
+|---------|---------|
+| Code Analysis | No runtime overhead, no performance impact |
+| No Credentials Required | Analyzes code locally, never touches your cloud |
+| Developer-First | Integrates into existing workflows (git, CI/CD, IDE) |
+| Language Agnostic | Works with Python and JavaScript, more coming |
+| Provider Agnostic | Supports AWS, GCP, Azure with same patterns |
 
 ## How It Works
 
-1. Parses your code into an AST (Abstract Syntax Tree)
-2. Detects expensive patterns using static analysis rules
+1. Parses your code (AST for Python, pattern detection for JS)
+2. Detects expensive patterns using analysis rules
 3. Calculates cost based on your traffic configuration
 4. Suggests optimizations with estimated savings
 
-No magic. No AI guessing. Just pattern matching against known expensive antipatterns.
-
-## License
-
-MIT
-
-## Links
-
-**Repository:** github.com/sahilnyk/deburger  
-**Issues:** github.com/sahilnyk/deburger/issues  
-**PyPI:** pypi.org/project/deburger
-
----
-
-Built by [@sahilnyk](https://github.com/sahilnyk)
+Pattern matching against known expensive antipatterns.
 
 Stop deploying expensive code. 🍔

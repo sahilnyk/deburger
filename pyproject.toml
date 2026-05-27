@@ -1,14 +1,18 @@
-[tool.poetry]
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
 name = "deburger"
-version = "0.3.0"  # Also update in src/deburger/_version.py
-description = "catch expensive code before it ships - cloud cost analyzer"
-authors = ["Sahil Nayak <sahilnayak2056@gmail.com>"]
+version = "1.0.0"
+description = "Static analysis tool that detects expensive cloud code patterns and estimates cost impact before deployment"
 readme = "README.md"
-license = "MIT"
-homepage = "https://github.com/sahilnyk/deburger"
-repository = "https://github.com/sahilnyk/deburger"
-documentation = "https://github.com/sahilnyk/deburger#readme"
-keywords = ["cloud", "cost", "aws", "optimization", "serverless"]
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Sahil Nayak", email = "sahilnayak2056@gmail.com"}
+]
+keywords = ["cloud", "cost-optimization", "static-analysis", "aws", "gcp", "azure", "cost-monitoring", "devops", "finops"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -19,47 +23,59 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Monitoring",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-typer = "^0.9.0"
-rich = "^13.7.0"
-PyYAML = "^6.0.1"
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "PyYAML>=6.0.1",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-pytest-cov = "^4.1.0"
-mypy = "^1.8.0"
-ruff = "^0.1.0"
-black = "^24.1.0"
+[project.optional-dependencies]
+llm = ["openai>=1.6.0", "anthropic>=0.18.0"]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.8.0",
+    "ruff>=0.1.0",
+    "black>=24.1.0",
+]
 
-[tool.poetry.scripts]
+[project.urls]
+"Homepage" = "https://github.com/sahilnyk/deburger"
+"Bug Tracker" = "https://github.com/sahilnyk/deburger/issues"
+"Documentation" = "https://github.com/sahilnyk/deburger#readme"
+"Source Code" = "https://github.com/sahilnyk/deburger"
+
+[project.scripts]
 deburger = "deburger.cli.main:main"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.setuptools]
+package-dir = {"" = "src"}
 
-[tool.black]
-line-length = 100
-target-version = ["py39", "py310", "py311", "py312"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py39"
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]
-
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=src/deburger --cov-report=term-missing"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
