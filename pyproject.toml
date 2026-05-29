@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deburger"
-version = "1.0.0"
+version = "1.0.1"
 description = "Catch expensive cloud code before it ships detects costly patterns and estimates your monthly bill impact"
 readme = "README.md"
 requires-python = ">=3.9"
