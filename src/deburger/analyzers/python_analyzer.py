@@ -23,7 +23,7 @@ class PythonAnalyzer(BaseAnalyzer):
 
         try:
             tree = self.parse_ast(code)
-        except SyntaxError:
+        except (SyntaxError, ValueError):
             return issues
 
         if config.get("detect", {}).get("n_plus_one_queries", True):

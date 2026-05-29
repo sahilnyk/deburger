@@ -4,6 +4,12 @@ from decimal import Decimal
 from deburger.analyzers.base import Issue, IssueType, Severity
 from deburger.analyzers.patterns.base import PatternDetector
 
+_CONTAINS_FILTER_RE = re.compile(r'\.filter\(.*__contains|.*__icontains|.*__regex')
+_SELECT_STAR_RE = re.compile(r'SELECT\s+\*\s+FROM', re.IGNORECASE)
+_LIKE_WILDCARD_RE = re.compile(r"LIKE\s+'%.*%'", re.IGNORECASE)
+_MONGO_REGEX_RE = re.compile(r'\.find\(\{[^}]*\$regex')
+_TEXT_FILTER_RE = re.compile(r'\.filter\(.*(?:name|title|description).*=')
+
 
 class UnindexedQueryDetector(PatternDetector):
     @property
@@ -19,14 +25,11 @@ class UnindexedQueryDetector(PatternDetector):
         lines = code.split('\n')
 
         for i, line in enumerate(lines, 1):
-            # detect filter/where without index hints
             if self._is_full_table_scan(line, lines, i):
-                snippet = '\n'.join(lines[max(0, i-2):min(len(lines), i+2)])
+                snippet = '\n'.join(lines[max(0, i - 2):min(len(lines), i + 2)])
 
-                # full table scans on 100k+ row tables = disaster
                 monthly_requests = config.get("traffic", {}).get("requests_per_day", 100000) * 30
-                # each scan reads all rows instead of indexed subset
-                scan_cost = Decimal(monthly_requests) * Decimal("0.000004")  # RDS IOPS cost
+                scan_cost = Decimal(monthly_requests) * Decimal("0.000004")
 
                 issues.append(Issue(
                     type=IssueType.INEFFICIENT_QUERY,
@@ -44,27 +47,21 @@ class UnindexedQueryDetector(PatternDetector):
         return issues
 
     def _is_full_table_scan(self, line: str, lines: List[str], line_num: int) -> bool:
-        line_stripped = line.strip()
+        stripped = line.strip()
 
-        # python ORM patterns without select_related
-        if re.search(r'\.filter\(.*__contains|.*__icontains|.*__regex', line_stripped):
+        if _CONTAINS_FILTER_RE.search(stripped):
             return True
 
-        # raw SQL without WHERE using index
-        if re.search(r'SELECT\s+\*\s+FROM', line_stripped, re.IGNORECASE):
-            # check if there's a WHERE with LIKE %...%
-            context = '\n'.join(lines[max(0, line_num-1):min(len(lines), line_num+3)])
-            if re.search(r"LIKE\s+'%.*%'", context, re.IGNORECASE):
+        if _SELECT_STAR_RE.search(stripped):
+            context = '\n'.join(lines[max(0, line_num - 1):min(len(lines), line_num + 3)])
+            if _LIKE_WILDCARD_RE.search(context):
                 return True
 
-        # mongo without index hint
-        if re.search(r'\.find\(\{[^}]*\$regex', line_stripped):
+        if _MONGO_REGEX_RE.search(stripped):
             return True
 
-        # django/sqlalchemy filter on text fields with contains
-        if re.search(r'\.filter\(.*name.*=|.*title.*=|.*description.*=', line_stripped):
-            # only flag if it's a text search pattern
-            if 'icontains' in line_stripped or 'contains' in line_stripped:
+        if _TEXT_FILTER_RE.search(stripped):
+            if 'icontains' in stripped or 'contains' in stripped:
                 return True
 
         return False
