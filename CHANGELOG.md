@@ -4,6 +4,27 @@ All notable changes to deburger will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.0.1] - 2026-05-29
+
+### Changed
+- Pre-compiled all regex patterns at module level for faster scanning
+- Reuse single SQLite connection in PricingCache instead of open/close per call
+- Fixed double file-read in FileCache on cache miss
+- Hoisted imports to module level (removed in-method imports)
+- Removed unused dependencies: `openai`, `anthropic`, `mypy`, `black`
+- Cleaned README: added PyPI badges, removed verbose sections, added usage examples
+- Python analyzer now handles null-byte content gracefully
+
+### Added
+- Full test suite (87 tests) organized by language:
+  - `tests/unit/core/` — CLI, cache, hooks, optimizer, providers, edge cases
+  - `tests/unit/python/` — Python analyzer, suppression, pattern detectors
+  - `tests/unit/javascript/` — JS/TS analyzer, N+1, sequential async
+
+### Removed
+- `llm` optional dependency group (openai, anthropic — never used)
+- `mypy` and `black` from dev deps (ruff handles both)
+
 ## [1.0.0] - 2026-05-28
 
 ### Added
