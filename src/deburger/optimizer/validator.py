@@ -1,7 +1,6 @@
 import ast
 import subprocess
-from typing import Optional, Dict
-from pathlib import Path
+from typing import Dict
 
 from deburger.optimizer.fixer import Fix
 

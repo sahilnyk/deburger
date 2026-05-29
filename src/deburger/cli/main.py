@@ -366,7 +366,7 @@ async def _pr_comment(pr: int, base: str):
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        task = progress.add_task("analyzing PR cost impact...", total=None)
+        progress.add_task("analyzing PR cost impact...", total=None)
         comment = await generate_pr_comment(base=base)
 
     if not comment:
@@ -399,7 +399,7 @@ async def _blame(path: str, top: int):
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        task = progress.add_task("scanning + blaming...", total=None)
+        progress.add_task("scanning + blaming...", total=None)
         scanner = FastScanner(config.to_dict())
         issues = await scanner.scan_path(path, incremental=False)
 

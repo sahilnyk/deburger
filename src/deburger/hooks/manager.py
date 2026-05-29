@@ -77,7 +77,7 @@ def uninstall_hook():
 
     # otherwise just remove our lines
     lines = content.split('\n')
-    new_lines = [l for l in lines if 'deburger' not in l]
+    new_lines = [line for line in lines if 'deburger' not in line]
     hook_path.write_text('\n'.join(new_lines))
 
 

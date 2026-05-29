@@ -1,5 +1,4 @@
 from typing import List, Dict
-from pathlib import Path
 from dataclasses import dataclass
 
 from deburger.optimizer.fixer import Fix

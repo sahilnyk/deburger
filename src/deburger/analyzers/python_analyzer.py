@@ -96,7 +96,7 @@ class PythonAnalyzer(BaseAnalyzer):
                     line_number=line_num,
                     code_snippet=code_snippet,
                     estimated_monthly_cost=estimated_cost,
-                    description=f"N+1 query detected in loop",
+                    description="N+1 query detected in loop",
                     explanation=(
                         f"Loop contains database query that will execute "
                         f"once per iteration. With {iterations} iterations "
@@ -230,10 +230,10 @@ class PythonAnalyzer(BaseAnalyzer):
             ),
             fix_suggestion=(
                 "Use asyncio.gather() to run in parallel:\n"
-                f"results = await asyncio.gather(\n"
-                f"    call1(),\n"
-                f"    call2()\n"
-                f")"
+                "results = await asyncio.gather(\n"
+                "    call1(),\n"
+                "    call2()\n"
+                ")"
             ),
             savings_monthly=savings,
             context={"await_count": len(await_nodes)}

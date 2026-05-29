@@ -1,9 +1,7 @@
 import subprocess
-import re
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from decimal import Decimal
-from collections import defaultdict
 
 from deburger.analyzers.base import Issue
 
