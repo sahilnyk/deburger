@@ -28,8 +28,6 @@ created .deburger.yml (provider: aws)
 run 'deburger check' to start scanning
 ```
 
----
-
 ### `deburger check`
 
 *the main one — scans your code and shows what's burning money*
@@ -55,8 +53,6 @@ issues found
 ```
 
 *add `-v` for detailed explanations and fix suggestions per issue*
-
----
 
 ### `deburger check --json`
 
@@ -87,8 +83,6 @@ deburger check . --json
 }
 ```
 
----
-
 ### `deburger optimize`
 
 *generates actual fixes — not just complaints*
@@ -111,8 +105,6 @@ total potential savings: $130.50/mo
 run with --apply to apply fixes
 ```
 
----
-
 ### `deburger diff`
 
 *compare cost impact between branches — great for PR reviews*
@@ -130,8 +122,6 @@ estimated cost impact: $145.00/mo
   app.py:42 - s3_in_loop
   api.py:15 - unbounded_query
 ```
-
----
 
 ### `deburger blame`
 
@@ -153,8 +143,6 @@ cost leaderboard (who's burning money)
 total waste: $275.00/month
 ```
 
----
-
 ### `deburger hook`
 
 *auto-blocks expensive commits so they never reach the repo*
@@ -169,8 +157,6 @@ deburger will run on every commit
 ```
 
 now every `git commit` runs a cost check first. expensive code = blocked.
-
----
 
 ### `deburger pr-comment`
 
