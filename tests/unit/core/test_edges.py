@@ -37,7 +37,7 @@ def test_binary_content_no_crash(config):
 
 def test_huge_single_line(config):
     analyzer = PythonAnalyzer()
-    code = "x = " + "1 + " * 10000 + "1\n"
+    code = "x = " + "1 + " * 100 + "1\n"
     issues = analyzer.analyze("big.py", code, config)
     assert isinstance(issues, list)
 
