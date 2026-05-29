@@ -1,9 +1,11 @@
+import re
+import asyncio
 from decimal import Decimal
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 from deburger.analyzers.base import Issue, IssueType
-from deburger.providers.base import CloudProvider, Resource, ResourceType
+from deburger.providers.base import CloudProvider, ResourceType
 from deburger.cost.cache import PricingCache
 
 
@@ -49,9 +51,6 @@ class CostEngine:
         self._pricing_preloaded = {}
 
     async def preload_pricing(self):
-        # preload all pricing in parallel, then everything is cached
-        import asyncio
-
         resource_types = [
             ResourceType.LAMBDA,
             ResourceType.DATABASE,
@@ -268,7 +267,6 @@ class CostEngine:
         elif "batch" in code:
             return 100
         elif "limit" in code:
-            import re
             match = re.search(r'limit\s*=\s*(\d+)', code)
             if match:
                 return int(match.group(1))
@@ -297,8 +295,6 @@ class CostEngine:
         return pricing_dict
 
     async def calculate_total_savings(self, issues: List[Issue], traffic: TrafficEstimate) -> Dict:
-        import asyncio
-
         tasks = [self.calculate_issue_cost(issue, traffic) for issue in issues]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 

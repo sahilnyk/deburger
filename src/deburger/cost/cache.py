@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -13,60 +13,68 @@ class PricingCache:
 
         cache_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = cache_dir / "pricing.db"
+        self._conn = None
         self._init_db()
 
+    def _get_conn(self) -> sqlite3.Connection:
+        if self._conn is None:
+            self._conn = sqlite3.connect(self.db_path)
+        return self._conn
+
     def _init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS pricing_cache (
-                    key TEXT PRIMARY KEY,
-                    value TEXT NOT NULL,
-                    expires_at INTEGER NOT NULL
-                )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_expires
-                ON pricing_cache(expires_at)
-            """)
+        conn = self._get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pricing_cache (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                expires_at INTEGER NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_expires
+            ON pricing_cache(expires_at)
+        """)
+        conn.commit()
 
     async def get(self, key: str) -> Optional[Dict[str, Decimal]]:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                "SELECT value, expires_at FROM pricing_cache WHERE key = ?",
-                (key,)
-            )
-            row = cursor.fetchone()
+        conn = self._get_conn()
+        cursor = conn.execute(
+            "SELECT value, expires_at FROM pricing_cache WHERE key = ?",
+            (key,)
+        )
+        row = cursor.fetchone()
 
-            if not row:
-                return None
+        if not row:
+            return None
 
-            value_json, expires_at = row
+        value_json, expires_at = row
 
-            # expired? delete it
-            if datetime.now().timestamp() > expires_at:
-                conn.execute("DELETE FROM pricing_cache WHERE key = ?", (key,))
-                return None
+        if datetime.now().timestamp() > expires_at:
+            conn.execute("DELETE FROM pricing_cache WHERE key = ?", (key,))
+            conn.commit()
+            return None
 
-            data = json.loads(value_json)
-            return {k: Decimal(v) for k, v in data.items()}
+        data = json.loads(value_json)
+        return {k: Decimal(v) for k, v in data.items()}
 
     async def set(self, key: str, value: Dict[str, Decimal], ttl: int = 86400):
-        # cache for 24hrs by default
         expires_at = int((datetime.now() + timedelta(seconds=ttl)).timestamp())
-
         value_json = json.dumps({k: str(v) for k, v in value.items()})
 
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO pricing_cache (key, value, expires_at) VALUES (?, ?, ?)",
-                (key, value_json, expires_at)
-            )
+        conn = self._get_conn()
+        conn.execute(
+            "INSERT OR REPLACE INTO pricing_cache (key, value, expires_at) VALUES (?, ?, ?)",
+            (key, value_json, expires_at)
+        )
+        conn.commit()
 
     async def clear_expired(self):
         now = int(datetime.now().timestamp())
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("DELETE FROM pricing_cache WHERE expires_at < ?", (now,))
+        conn = self._get_conn()
+        conn.execute("DELETE FROM pricing_cache WHERE expires_at < ?", (now,))
+        conn.commit()
 
     async def clear_all(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("DELETE FROM pricing_cache")
+        conn = self._get_conn()
+        conn.execute("DELETE FROM pricing_cache")
+        conn.commit()
