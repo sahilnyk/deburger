@@ -1,7 +1,9 @@
 import os
 import asyncio
+import subprocess
+import time
 from pathlib import Path
-from typing import List, Dict, Set
+from typing import List, Set
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -21,7 +23,6 @@ class FastScanner:
     def __init__(self, config: dict, max_workers: int = None):
         self.config = config
         self.max_workers = max_workers or min(32, (os.cpu_count() or 1) * 4)
-        self.file_cache = {}
 
     async def scan_path(self, path: str, incremental: bool = True) -> List[Issue]:
         # get files to scan (changed files if incremental)
@@ -77,8 +78,6 @@ class FastScanner:
         return extensions
 
     async def _filter_changed_files(self, files: List[Path]) -> List[Path]:
-        import subprocess
-
         try:
             # get changed files from git (unstaged)
             result = subprocess.run(
@@ -145,7 +144,6 @@ class FastScanner:
         return [r for r in results if isinstance(r, ScanResult)]
 
     def _scan_file_sync(self, file_path: str) -> ScanResult:
-        import time
         start = time.time()
 
         try:

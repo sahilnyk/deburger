@@ -1,8 +1,6 @@
-import os
-import asyncio
 import subprocess
-from typing import Optional, List
-from decimal import Decimal
+from typing import Optional
+from pathlib import Path
 
 from deburger.config import load_config
 from deburger.scanner import FastScanner
@@ -11,7 +9,6 @@ from deburger.providers.registry import ProviderRegistry
 
 
 async def generate_pr_comment(base: str = "main", head: str = "HEAD") -> str:
-    # scan changed files between branches
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", base, head],
@@ -29,9 +26,7 @@ async def generate_pr_comment(base: str = "main", head: str = "HEAD") -> str:
     config = load_config()
     scanner = FastScanner(config.to_dict())
 
-    # scan changed files
     issues = []
-    from pathlib import Path
     for f in changed_files:
         if Path(f).exists():
             file_issues = await scanner.scan_path(f, incremental=False)
@@ -40,7 +35,6 @@ async def generate_pr_comment(base: str = "main", head: str = "HEAD") -> str:
     if not issues:
         return "## deburger\n\n**No expensive patterns detected.** Ship it.\n"
 
-    # calculate costs
     provider = ProviderRegistry.get(config.provider)
     if provider:
         await provider.initialize({"region": config.region})
@@ -52,7 +46,6 @@ async def generate_pr_comment(base: str = "main", head: str = "HEAD") -> str:
     else:
         total_cost = sum(i.estimated_monthly_cost for i in issues)
 
-    # build markdown comment
     comment = "## deburger cost impact\n\n"
 
     if total_cost > 500:
@@ -62,11 +55,10 @@ async def generate_pr_comment(base: str = "main", head: str = "HEAD") -> str:
     else:
         comment += f"Minor cost impact: +${total_cost:.2f}/month\n\n"
 
-    # issues table
     comment += "| File | Issue | Severity | Cost/mo |\n"
     comment += "|------|-------|----------|--------|\n"
 
-    for issue in issues[:10]:  # cap at 10
+    for issue in issues[:10]:
         file_name = Path(issue.file_path).name
         comment += f"| `{file_name}:{issue.line_number}` | {issue.description} | {issue.severity.value} | ${issue.estimated_monthly_cost:.2f} |\n"
 
@@ -80,9 +72,7 @@ async def generate_pr_comment(base: str = "main", head: str = "HEAD") -> str:
 
 
 def post_pr_comment(pr_number: int, comment: str, repo: Optional[str] = None):
-    # post comment to github PR using gh cli
     if not repo:
-        # detect from git remote
         try:
             result = subprocess.run(
                 ["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
