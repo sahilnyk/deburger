@@ -9,15 +9,15 @@ _AWAIT_ASSIGN_RE = re.compile(r'\s*(const|let|var).*=\s*await\s+')
 _AWAIT_EXTRACT_RE = re.compile(r'(?:const|let|var)\s+(\w+)\s*=\s*await\s+(.+?);?$')
 
 
-class JavaScriptAnalyzer(BaseAnalyzer):
+class TypeScriptAnalyzer(BaseAnalyzer):
 
     @property
     def name(self) -> str:
-        return "javascript"
+        return "typescript"
 
     @property
     def supported_languages(self) -> List[str]:
-        return [".js", ".ts", ".jsx", ".tsx"]
+        return [".ts", ".tsx"]
 
     def analyze(self, file_path: str, code: str, config: dict) -> List[Issue]:
         issues = []
