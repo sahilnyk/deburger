@@ -284,9 +284,9 @@ class CostEngine:
         pricing = await self.provider.get_pricing(self.region, resource_type)
 
         pricing_dict = {
-            "gb_second_cost": pricing.gb_second_cost if hasattr(pricing, 'gb_second_cost') else Decimal("0"),
-            "io_cost_per_operation": pricing.io_cost if hasattr(pricing, 'io_cost') else Decimal("0.0000002"),
-            "request_cost": pricing.request_cost if hasattr(pricing, 'request_cost') else Decimal("0.0000002"),
+            "gb_second_cost": getattr(pricing, 'gb_second_cost', Decimal("0")),
+            "io_cost_per_operation": getattr(pricing, 'io_cost', Decimal("0.0000002")),
+            "request_cost": getattr(pricing, 'request_cost', Decimal("0.0000002")),
             "connection_overhead": Decimal("0.00001"),
             "monthly_cost": Decimal("50")
         }

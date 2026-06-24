@@ -12,8 +12,8 @@ class PricingCache:
             cache_dir = Path.home() / ".deburger" / "cache"
 
         cache_dir.mkdir(parents=True, exist_ok=True)
-        self.db_path = cache_dir / "pricing.db"
-        self._conn = None
+        self.db_path = str(cache_dir / "pricing.db")
+        self._conn: Optional[sqlite3.Connection] = None
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
