@@ -4,7 +4,7 @@ import asyncio
 import pytest
 from deburger.scanner import FastScanner
 from deburger.analyzers.python_analyzer import PythonAnalyzer
-from deburger.analyzers.javascript_analyzer import JavaScriptAnalyzer
+from deburger.analyzers.javascript_analyzer import TypeScriptAnalyzer
 
 
 @pytest.fixture
@@ -43,8 +43,8 @@ def test_huge_single_line(config):
 
 
 def test_js_empty_file(config):
-    analyzer = JavaScriptAnalyzer()
-    issues = analyzer.analyze("empty.js", "", config)
+    analyzer = TypeScriptAnalyzer()
+    issues = analyzer.analyze("empty.ts", "", config)
     assert issues == []
 
 

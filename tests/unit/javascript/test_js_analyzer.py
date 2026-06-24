@@ -1,13 +1,13 @@
-"""Tests for JavaScript/TypeScript analyzer."""
+"""Tests for TypeScript analyzer."""
 
 import pytest
-from deburger.analyzers.javascript_analyzer import JavaScriptAnalyzer
+from deburger.analyzers.javascript_analyzer import TypeScriptAnalyzer
 from deburger.analyzers.base import IssueType, Severity
 
 
 @pytest.fixture
 def analyzer():
-    return JavaScriptAnalyzer()
+    return TypeScriptAnalyzer()
 
 
 @pytest.fixture
@@ -21,12 +21,12 @@ def config():
 class TestNPlusOne:
     def test_detects_in_for_loop(self, analyzer, config):
         code = "for (const item of items) {\n    const r = await db.find(item.id);\n}\n"
-        issues = analyzer.analyze("app.js", code, config)
+        issues = analyzer.analyze("app.ts", code, config)
         assert any(i.type == IssueType.N_PLUS_ONE_QUERY for i in issues)
 
     def test_no_false_positive(self, analyzer, config):
         code = "for (const item of items) {\n    transform(item);\n}\n"
-        issues = analyzer.analyze("app.js", code, config)
+        issues = analyzer.analyze("app.ts", code, config)
         assert not any(i.type == IssueType.N_PLUS_ONE_QUERY for i in issues)
 
 
@@ -40,14 +40,17 @@ class TestSequentialAsync:
 
     def test_single_await_ok(self, analyzer, config):
         code = "async function f() {\n    const a = await getA();\n    return a;\n}\n"
-        issues = analyzer.analyze("app.js", code, config)
+        issues = analyzer.analyze("app.ts", code, config)
         assert not any(i.type == IssueType.SEQUENTIAL_ASYNC for i in issues)
 
 
 class TestSupported:
-    def test_js_ts_jsx_tsx(self, analyzer):
-        for ext in [".js", ".ts", ".jsx", ".tsx"]:
+    def test_ts_tsx(self, analyzer):
+        for ext in [".ts", ".tsx"]:
             assert analyzer.can_analyze(f"file{ext}")
+
+    def test_rejects_js(self, analyzer):
+        assert not analyzer.can_analyze("file.js")
 
     def test_rejects_py(self, analyzer):
         assert not analyzer.can_analyze("file.py")
@@ -56,5 +59,5 @@ class TestSupported:
 class TestSuppression:
     def test_ignore_inline(self, analyzer, config):
         code = "for (const item of items) {\n    const r = await db.find(item.id); // deburger:ignore\n}\n"
-        issues = analyzer.analyze("app.js", code, config)
+        issues = analyzer.analyze("app.ts", code, config)
         assert not any(i.type == IssueType.N_PLUS_ONE_QUERY for i in issues)
