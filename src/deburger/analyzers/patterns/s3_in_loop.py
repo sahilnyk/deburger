@@ -29,7 +29,7 @@ class S3InLoopDetector(PatternDetector):
 
     @property
     def supported_extensions(self) -> List[str]:
-        return [".py", ".js", ".ts"]
+        return [".py", ".ts"]
 
     def detect(self, file_path: str, code: str, config: dict) -> List[Issue]:
         issues = []
