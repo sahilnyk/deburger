@@ -66,5 +66,5 @@ setup(
         "Environment :: Console",
         "Operating System :: OS Independent",
     ],
-    keywords="cloud cost-optimization static-analysis aws gcp azure cost-monitoring devops finops",
+    keywords="cloud-cost-optimization finops static-analysis aws-cost cloud-monitoring cost-savings devops-tools python-analyzer cloud-waste-detection cost-engineering",
 )

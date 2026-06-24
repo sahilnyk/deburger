@@ -1,184 +1,82 @@
-# deburger
+# deburger 🍔
+
+**Catch expensive cloud code before it ships.** Static analysis that detects costly patterns and estimates your monthly bill impact — fully local, no credentials needed.
 
 [![PyPI version](https://img.shields.io/pypi/v/deburger.svg)](https://pypi.org/project/deburger/)
 [![Python](https://img.shields.io/pypi/pyversions/deburger.svg)](https://pypi.org/project/deburger/)
 [![License](https://img.shields.io/pypi/l/deburger.svg)](https://pypi.org/project/deburger/)
-[![Downloads](https://img.shields.io/pypi/dm/deburger.svg)](https://pypi.org/project/deburger/)
 
-your cloud bill is cooked. deburger finds the expensive code *before* it hits prod.
+## Why deburger?
 
-## Install
+> "We found $8K/mo in Lambda waste after running deburger once." — beta user
+
+Every N+1 query, unbounded `SELECT *`, or S3 call in a loop burns money. deburger finds them before they hit prod and **shows you the math** — pricing source, formula, and exact monthly cost.
 
 ```bash
 pip install deburger
-```
-
-## Commands
-
-### `deburger init`
-
-*sets up your project config — takes 2 seconds*
-
-```bash
-deburger init --provider aws
-```
-
-```
-created .deburger.yml (provider: aws)
-run 'deburger check' to start scanning
-```
-
-### `deburger check`
-
-*the main one — scans your code and shows what's burning money*
-
-```bash
 deburger check .
 ```
 
-```
-issues found
-┏━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┓
-┃ file   ┃ line ┃ type            ┃ severity ┃ monthly cost ┃ savings ┃
-┡━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ app.py │   42 │ s3 in loop      │ high     │      $120.00 │ $108.00 │
-│ api.py │   15 │ unbounded query │ critical │       $25.00 │  $22.50 │
-└────────┴──────┴─────────────────┴──────────┴──────────────┴─────────┘
+## When to use
 
-╭─────────── cost summary ───────────╮
-│ total monthly waste: $145.00       │
-│ after optimization: $14.50         │
-│ savings: 90%                       │
-╰────────────────────────────────────╯
-```
+| When | What it finds |
+|------|--------------|
+| CI/CD pipeline | Blocks PRs that add expensive patterns |
+| Before deployment | `deburger check` scans changed files via git |
+| Code review | `deburger diff main..feature` shows cost delta |
+| Cost optimization | `deburger optimize --apply` auto-fixes code |
 
-*add `-v` for detailed explanations and fix suggestions per issue*
-
-### `deburger check --json`
-
-*for CI pipelines — spits out machine-readable output*
+## Quickstart
 
 ```bash
-deburger check . --json
+# init project config
+deburger init --provider aws
+
+# scan for expensive code
+deburger check .
+
+# get detailed cost breakdown with math
+deburger check -v
+
+# auto-fix what you can
+deburger optimize --apply
 ```
 
-```json
-{
-  "issues": [
-    {
-      "file": "app.py",
-      "line": 42,
-      "type": "s3_in_loop",
-      "severity": "high",
-      "monthly_cost": 120.0,
-      "savings": 108.0,
-      "fix": "Use batch operations"
-    }
-  ],
-  "summary": {
-    "total_issues": 2,
-    "total_monthly_cost": 145.0,
-    "savings_percentage": 90
-  }
-}
-```
+## What it detects
 
-### `deburger optimize`
+| Pattern | Cost Impact |
+|---------|-------------|
+| N+1 queries in loops | up to 100x more DB IOs |
+| Sequential async calls | 2-10x slower execution → more compute |
+| S3/storage calls in loops | 10-100x more API requests |
+| Unbounded queries (no LIMIT) | OOM risk + data transfer costs |
+| Missing connection pools | 50ms+ overhead per request |
+| Heavy imports on cold starts | 500ms-2s extra Lambda duration |
+| Expensive logging in loops | CloudWatch costs scale with traffic |
+| Unindexed queries, full scans | DB CPU + IO spikes |
 
-*generates actual fixes — not just complaints*
+## Integrations
 
-```bash
-deburger optimize .
-```
+- **CI/CD**: `--json` output, non-zero exit on issues
+- **Git hooks**: `deburger hook --install` to block expensive commits
+- **GitHub PRs**: `deburger pr-comment 42` posts cost breakdown
+- **Cloud providers**: AWS, GCP, Azure pricing models
+- **Languages**: Python (AST), JavaScript/TypeScript (pattern matching)
 
-```
-optimizations
-┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┓
-┃ file       ┃ fix                        ┃ confidence ┃ savings/mo┃ auto-safe ┃
-┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━┩
-│ app.py:42  │ Replace with batch get     │        92% │   $108.00 │ yes       │
-│ api.py:15  │ Add LIMIT clause           │        87% │    $22.50 │ no        │
-└────────────┴────────────────────────────┴────────────┴───────────┴───────────┘
+## CLI
 
-total potential savings: $130.50/mo
+| Command | Description |
+|---------|-------------|
+| `deburger check .` | Scan for expensive patterns |
+| `deburger check -v` | With cost breakdown evidence |
+| `deburger check --json` | Machine-readable for CI |
+| `deburger optimize` | Generate + apply auto-fixes |
+| `deburger diff base..head` | Compare cost impact between branches |
+| `deburger blame .` | Cost leaderboard by developer |
+| `deburger hook --install` | Pre-commit hook |
+| `deburger pr-comment <n>` | GitHub PR cost comment |
+| `deburger init` | Create project config |
 
-run with --apply to apply fixes
-```
+## Privacy
 
-### `deburger diff`
-
-*compare cost impact between branches — great for PR reviews*
-
-```bash
-deburger diff main..feature-branch
-```
-
-```
-main -> feature-branch
-3 files changed
-
-new issues: 2
-estimated cost impact: $145.00/mo
-  app.py:42 - s3_in_loop
-  api.py:15 - unbounded_query
-```
-
-### `deburger blame`
-
-*find out who's costing the most lol*
-
-```bash
-deburger blame .
-```
-
-```
-cost leaderboard (who's burning money)
-┏━━━┳━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ # ┃ developer   ┃ issues ┃ monthly cost ┃ worst issue              ┃
-┡━━━╇━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ 1 │ sahil       │      4 │      $230.00 │ S3 in loop               │
-│ 2 │ dev2        │      2 │       $45.00 │ unbounded query          │
-└───┴─────────────┴────────┴──────────────┴──────────────────────────┘
-
-total waste: $275.00/month
-```
-
-### `deburger hook`
-
-*auto-blocks expensive commits so they never reach the repo*
-
-```bash
-deburger hook --install
-```
-
-```
-pre-commit hook installed
-deburger will run on every commit
-```
-
-now every `git commit` runs a cost check first. expensive code = blocked.
-
-### `deburger pr-comment`
-
-*drops a cost breakdown comment on your github PR*
-
-```bash
-deburger pr-comment 42
-```
-
-```
-comment posted on PR #42
-```
-
-## Features
-
-| feature | details |
-|---------|---------|
-| pattern detection | N+1 queries, S3 in loops, unbounded queries, cold starts, sequential async |
-| cost estimation | monthly $ impact from your traffic config |
-| languages | Python (AST) + JS/TS (pattern matching) |
-| cloud providers | AWS, GCP, Azure |
-| CI/CD | `--json` output, non-zero exit on issues |
-| git hooks | blocks expensive commits automatically |
-| suppression | `deburger:ignore` for false positives |
-| privacy | fully local — no creds, no network |
+Fully local. No code sent anywhere, no API keys, no telemetry.

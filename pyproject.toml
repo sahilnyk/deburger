@@ -12,7 +12,7 @@ license = {text = "MIT"}
 authors = [
     {name = "Sahil Nayak", email = "sahilnayak2056@gmail.com"}
 ]
-keywords = ["cloud", "cost-optimization", "aws", "gcp", "azure", "finops", "devops"]
+keywords = ["cloud-cost-optimization", "finops", "static-analysis", "aws-cost", "cloud-monitoring", "cost-savings", "devops-tools", "python-analyzer", "cloud-waste-detection", "cost-engineering"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
