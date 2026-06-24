@@ -163,29 +163,4 @@ class FastScanner:
             elapsed_ms = (time.time() - start) * 1000
             return ScanResult(file_path, [], elapsed_ms, error=str(e))
 
-    async def scan_with_progress(self, path: str, callback=None) -> List[Issue]:
-        # scan with progress updates
-        files = await self._get_files_to_scan(path, incremental=False)
-        total = len(files)
 
-        if callback:
-            callback(0, total)
-
-        results = []
-        completed = 0
-
-        batch_size = max(10, total // 10)
-
-        for i in range(0, len(files), batch_size):
-            batch = files[i:i + batch_size]
-            batch_results = await self._scan_files_parallel(batch)
-
-            for result in batch_results:
-                if not result.error:
-                    results.extend(result.issues)
-
-            completed += len(batch)
-            if callback:
-                callback(completed, total)
-
-        return results
