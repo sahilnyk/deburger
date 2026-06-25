@@ -1,0 +1,87 @@
+{
+  "provider": "azure",
+  "updated_at": "2026-06-25",
+  "regions": {
+    "eastus": {
+      "lambda": {
+        "gb_second": "0.000016",
+        "request": "0.0000002",
+        "free_tier_requests": "1000000",
+        "free_tier_gb_seconds": "400000"
+      },
+      "rds": {
+        "io_per_operation": "0.000000285",
+        "storage_gb_month": "0.115",
+        "instance_b2s_hour": "0.0416"
+      },
+      "s3": {
+        "get_request": "0.0000004",
+        "put_request": "0.0000055",
+        "storage_gb_month": "0.018",
+        "data_transfer_out_gb": "0.087"
+      },
+      "elasticache": {
+        "cache_c1_hour": "0.022",
+        "data_transfer_gb": "0.01"
+      },
+      "cloudwatch": {
+        "logs_ingest_gb": "0.25",
+        "logs_storage_gb_month": "0.10"
+      }
+    },
+    "westeurope": {
+      "lambda": {
+        "gb_second": "0.000016",
+        "request": "0.0000002",
+        "free_tier_requests": "1000000",
+        "free_tier_gb_seconds": "400000"
+      },
+      "rds": {
+        "io_per_operation": "0.000000285",
+        "storage_gb_month": "0.126",
+        "instance_b2s_hour": "0.0468"
+      },
+      "s3": {
+        "get_request": "0.0000004",
+        "put_request": "0.0000055",
+        "storage_gb_month": "0.020",
+        "data_transfer_out_gb": "0.087"
+      },
+      "elasticache": {
+        "cache_c1_hour": "0.025",
+        "data_transfer_gb": "0.01"
+      },
+      "cloudwatch": {
+        "logs_ingest_gb": "0.25",
+        "logs_storage_gb_month": "0.10"
+      }
+    }
+  },
+  "defaults": {
+    "lambda": {
+      "gb_second": "0.000016",
+      "request": "0.0000002",
+      "free_tier_requests": "1000000",
+      "free_tier_gb_seconds": "400000"
+    },
+    "rds": {
+      "io_per_operation": "0.000000285",
+      "storage_gb_month": "0.115",
+      "instance_b2s_hour": "0.0416"
+    },
+    "s3": {
+      "get_request": "0.0000004",
+      "put_request": "0.0000055",
+      "storage_gb_month": "0.018",
+      "data_transfer_out_gb": "0.087"
+    },
+    "elasticache": {
+      "cache_c1_hour": "0.022",
+      "data_transfer_gb": "0.01"
+    },
+    "cloudwatch": {
+      "logs_ingest_gb": "0.25",
+      "logs_storage_gb_month": "0.10"
+    }
+  }
+}

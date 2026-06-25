@@ -1,0 +1,141 @@
+{
+  "provider": "aws",
+  "updated_at": "2026-06-25",
+  "regions": {
+    "us-east-1": {
+      "lambda": {
+        "gb_second": "0.0000166667",
+        "request": "0.0000002",
+        "free_tier_requests": "1000000",
+        "free_tier_gb_seconds": "400000"
+      },
+      "rds": {
+        "io_per_operation": "0.0000002",
+        "storage_gb_month": "0.115",
+        "instance_t3_medium_hour": "0.068"
+      },
+      "s3": {
+        "get_request": "0.0000004",
+        "put_request": "0.000005",
+        "storage_gb_month": "0.023",
+        "data_transfer_out_gb": "0.09"
+      },
+      "elasticache": {
+        "cache_t3_micro_hour": "0.017",
+        "data_transfer_gb": "0.01"
+      },
+      "cloudwatch": {
+        "logs_ingest_gb": "0.50",
+        "logs_storage_gb_month": "0.03"
+      }
+    },
+    "us-west-2": {
+      "lambda": {
+        "gb_second": "0.0000166667",
+        "request": "0.0000002",
+        "free_tier_requests": "1000000",
+        "free_tier_gb_seconds": "400000"
+      },
+      "rds": {
+        "io_per_operation": "0.0000002",
+        "storage_gb_month": "0.115",
+        "instance_t3_medium_hour": "0.068"
+      },
+      "s3": {
+        "get_request": "0.0000004",
+        "put_request": "0.000005",
+        "storage_gb_month": "0.023",
+        "data_transfer_out_gb": "0.09"
+      },
+      "elasticache": {
+        "cache_t3_micro_hour": "0.017",
+        "data_transfer_gb": "0.01"
+      },
+      "cloudwatch": {
+        "logs_ingest_gb": "0.50",
+        "logs_storage_gb_month": "0.03"
+      }
+    },
+    "eu-west-1": {
+      "lambda": {
+        "gb_second": "0.0000185",
+        "request": "0.0000002",
+        "free_tier_requests": "1000000",
+        "free_tier_gb_seconds": "400000"
+      },
+      "rds": {
+        "io_per_operation": "0.0000002",
+        "storage_gb_month": "0.138",
+        "instance_t3_medium_hour": "0.076"
+      },
+      "s3": {
+        "get_request": "0.0000004",
+        "put_request": "0.000005",
+        "storage_gb_month": "0.025",
+        "data_transfer_out_gb": "0.09"
+      },
+      "elasticache": {
+        "cache_t3_micro_hour": "0.019",
+        "data_transfer_gb": "0.01"
+      },
+      "cloudwatch": {
+        "logs_ingest_gb": "0.57",
+        "logs_storage_gb_month": "0.033"
+      }
+    },
+    "ap-southeast-1": {
+      "lambda": {
+        "gb_second": "0.0000180",
+        "request": "0.0000002",
+        "free_tier_requests": "1000000",
+        "free_tier_gb_seconds": "400000"
+      },
+      "rds": {
+        "io_per_operation": "0.0000002",
+        "storage_gb_month": "0.138",
+        "instance_t3_medium_hour": "0.076"
+      },
+      "s3": {
+        "get_request": "0.0000004",
+        "put_request": "0.000005",
+        "storage_gb_month": "0.025",
+        "data_transfer_out_gb": "0.12"
+      },
+      "elasticache": {
+        "cache_t3_micro_hour": "0.020",
+        "data_transfer_gb": "0.01"
+      },
+      "cloudwatch": {
+        "logs_ingest_gb": "0.57",
+        "logs_storage_gb_month": "0.033"
+      }
+    }
+  },
+  "defaults": {
+    "lambda": {
+      "gb_second": "0.0000166667",
+      "request": "0.0000002",
+      "free_tier_requests": "1000000",
+      "free_tier_gb_seconds": "400000"
+    },
+    "rds": {
+      "io_per_operation": "0.0000002",
+      "storage_gb_month": "0.115",
+      "instance_t3_medium_hour": "0.068"
+    },
+    "s3": {
+      "get_request": "0.0000004",
+      "put_request": "0.000005",
+      "storage_gb_month": "0.023",
+      "data_transfer_out_gb": "0.09"
+    },
+    "elasticache": {
+      "cache_t3_micro_hour": "0.017",
+      "data_transfer_gb": "0.01"
+    },
+    "cloudwatch": {
+      "logs_ingest_gb": "0.50",
+      "logs_storage_gb_month": "0.03"
+    }
+  }
+}
