@@ -3,7 +3,7 @@
 import asyncio
 import pytest
 from decimal import Decimal
-from deburger.cost import CostEngine, TrafficEstimate
+from deburger.cost import CostEngine, PricingCache, TrafficEstimate
 from deburger.providers import ProviderRegistry
 from deburger.analyzers.base import Issue, IssueType, Severity
 
@@ -21,10 +21,10 @@ def traffic():
 
 
 @pytest.fixture
-def engine():
+def engine(tmp_path):
     provider = ProviderRegistry.get("aws")
     asyncio.run(provider.initialize({"region": "us-east-1"}))
-    return CostEngine(provider, "us-east-1")
+    return CostEngine(provider, "us-east-1", cache=PricingCache(tmp_path))
 
 
 @pytest.fixture

@@ -60,5 +60,5 @@ def test_scan_ignores_patterns(config, tmp_path):
 
 
 def test_scan_nonexistent_path(scanner):
-    issues = asyncio.run(scanner.scan_path("/nonexistent/path", incremental=False))
-    assert issues == []
+    with pytest.raises(FileNotFoundError, match="scan path does not exist"):
+        asyncio.run(scanner.scan_path("/nonexistent/path", incremental=False))

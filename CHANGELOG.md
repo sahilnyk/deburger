@@ -4,7 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Revision-aware Git comparison for newly introduced findings
+- JavaScript and JSX file support
+- Configuration validation with clear failure messages
+- Cross-platform CI coverage and distribution checks
+
+### Changed
+
+- Rewrote the README and user manual around verified behavior
+- Made package metadata come from `pyproject.toml`
+- Gave each detection rule a stable issue type
+- Marked async rewrites as requiring manual review
+
 ### Fixed
+
+- Prevent malformed source files from hanging a scan
+- Keep JSON output free from progress rendering
+- Preserve original backups when applying multiple fixes
+- Apply file changes sequentially and replace files atomically
+- Compare source from both requested Git revisions
+- Respect configured Git hook thresholds
+- Report current cost, optimized cost, and savings separately
 - Handle RecursionError in AST parser to prevent crashes on deeply nested code
 - Resolve all ruff lint errors for better code quality
 

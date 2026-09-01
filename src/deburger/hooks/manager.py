@@ -81,6 +81,10 @@ def uninstall_hook():
         end += len("# deburger hook end")
         cleaned = (content[:start] + content[end:]).strip() + "\n"
         hook_path.write_text(cleaned, encoding="utf-8")
+        return
+
+    legacy_lines = [line for line in content.splitlines() if "deburger" not in line]
+    hook_path.write_text("\n".join(legacy_lines).rstrip() + "\n", encoding="utf-8")
 
 
 def run_hook() -> int:
