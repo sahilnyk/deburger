@@ -384,38 +384,25 @@ def diff(
 
 
 async def _diff(base: str, head: str):
-    import subprocess
+    from deburger.config import load_config
+    from deburger.integrations.git_diff import (
+        added_issues,
+        changed_files as get_changed_files,
+        parse_revision_range,
+    )
 
+    base, head = parse_revision_range(base, head)
     try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", base, head],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode != 0:
-            console.print(f"[red]git diff failed: {result.stderr}[/red]")
-            return
-        changed_files = [f for f in result.stdout.strip().split("\n") if f]
-    except Exception as e:
-        console.print(f"[red]error: {e}[/red]")
+        changed_files = get_changed_files(base, head)
+        config = load_config()
+        issues = added_issues(base, head, config.to_dict())
+    except (OSError, RuntimeError, ValueError) as exc:
+        error_console.print(f"[red]error:[/red] {exc}")
         return
 
     if not changed_files:
         console.print("[green]no changes between branches[/green]")
         return
-
-    from deburger.config import load_config
-    from deburger.scanner import FastScanner
-
-    config = load_config()
-    scanner = FastScanner(config.to_dict())
-
-    issues = []
-    for f in changed_files:
-        if Path(f).exists():
-            file_issues = await scanner.scan_path(f, incremental=False)
-            issues.extend(file_issues)
 
     console.print(f"\n[bold]{base}[/bold] [dim]→[/dim] [bold]{head}[/bold]")
     console.print(f"[dim]{len(changed_files)} files changed[/dim]")
