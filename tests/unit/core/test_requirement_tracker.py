@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from deburger.config import DeburgerConfig, load_config, generate_default_config
+from deburger.config import ConfigError, DeburgerConfig, generate_default_config, load_config
 
 
 def test_default_config():
@@ -36,6 +36,30 @@ def test_generate_default_config():
     assert "provider: aws" in content
     assert "region: us-east-1" in content
     assert "requests_per_day" in content
+
+
+def test_rejects_unknown_provider(tmp_path):
+    config_path = tmp_path / ".deburger.yml"
+    config_path.write_text("provider: digital-ocean\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="unsupported provider"):
+        load_config(str(config_path))
+
+
+def test_rejects_non_mapping_config(tmp_path):
+    config_path = tmp_path / ".deburger.yml"
+    config_path.write_text("- aws\n- gcp\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="must be a mapping"):
+        load_config(str(config_path))
+
+
+def test_rejects_non_positive_traffic(tmp_path):
+    config_path = tmp_path / ".deburger.yml"
+    config_path.write_text("traffic:\n  requests_per_day: 0\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="requests_per_day"):
+        load_config(str(config_path))
 
 
 def test_to_dict():
