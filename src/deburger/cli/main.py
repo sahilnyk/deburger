@@ -1,7 +1,6 @@
 import sys
 import asyncio
 import typer
-import platform
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -11,15 +10,6 @@ from rich.text import Text
 from rich.align import Align
 from pathlib import Path
 from typing import Dict
-
-def is_windows():
-    return platform.system() == "Windows"
-
-def is_macos():
-    return platform.system() == "Darwin"
-
-def is_linux():
-    return platform.system() == "Linux"
 
 app = typer.Typer(
     name="deburger",
@@ -31,10 +21,10 @@ app = typer.Typer(
 console = Console()
 
 SEVERITY_ICONS = {
-    "critical": "🔴" if not is_windows() else "●",
-    "high": "🟠" if not is_windows() else "◆",
-    "medium": "🟡" if not is_windows() else "▲",
-    "low": "⚪" if not is_windows() else "○",
+    "critical": "[!]",
+    "high": "[H]",
+    "medium": "[M]",
+    "low": "[L]",
 }
 
 PRICING_EVIDENCE: Dict[str, str] = {
