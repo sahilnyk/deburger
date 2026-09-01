@@ -2,7 +2,6 @@
 
 import asyncio
 import pytest
-from pathlib import Path
 from deburger.scanner import FastScanner
 from deburger.analyzers.base import IssueType
 

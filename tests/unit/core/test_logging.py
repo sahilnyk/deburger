@@ -2,7 +2,6 @@
 
 import pytest
 from deburger.analyzers.patterns.expensive_logging import ExpensiveLoggingDetector
-from deburger.analyzers.base import IssueType
 
 
 @pytest.fixture

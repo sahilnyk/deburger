@@ -1,6 +1,5 @@
 """Tests for CLI commands."""
 
-import pytest
 from typer.testing import CliRunner
 from deburger.cli.main import app
 

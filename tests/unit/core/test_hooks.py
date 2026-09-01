@@ -1,7 +1,5 @@
 """Tests for git hook management."""
 
-import pytest
-from pathlib import Path
 from unittest.mock import patch
 from deburger.hooks.manager import install_hook, uninstall_hook, HOOK_SCRIPT
 

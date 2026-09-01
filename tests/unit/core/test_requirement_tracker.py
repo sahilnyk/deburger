@@ -1,7 +1,6 @@
 """Tests for config loader."""
 
 import pytest
-from pathlib import Path
 from deburger.config import ConfigError, DeburgerConfig, generate_default_config, load_config
 
 

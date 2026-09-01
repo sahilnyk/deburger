@@ -1,7 +1,6 @@
 """Tests for Python analyzer."""
 
 import pytest
-from decimal import Decimal
 from deburger.analyzers.python_analyzer import PythonAnalyzer
 from deburger.analyzers.base import IssueType, Severity
 
