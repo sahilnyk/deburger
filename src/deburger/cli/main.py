@@ -1,14 +1,25 @@
 import sys
 import asyncio
 import typer
+import platform
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.tree import Tree
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.text import Text
+from rich.align import Align
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict
+
+def is_windows():
+    return platform.system() == "Windows"
+
+def is_macos():
+    return platform.system() == "Darwin"
+
+def is_linux():
+    return platform.system() == "Linux"
 
 app = typer.Typer(
     name="deburger",
@@ -17,13 +28,13 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
-console = Console()
+console = Console(width=max(Console().width or 100, 100))
 
 SEVERITY_ICONS = {
-    "critical": "🔴",
-    "high": "🟠",
-    "medium": "🟡",
-    "low": "⚪",
+    "critical": "🔴" if not is_windows() else "●",
+    "high": "🟠" if not is_windows() else "◆",
+    "medium": "🟡" if not is_windows() else "▲",
+    "low": "⚪" if not is_windows() else "○",
 }
 
 PRICING_EVIDENCE: Dict[str, str] = {
@@ -33,7 +44,7 @@ PRICING_EVIDENCE: Dict[str, str] = {
 }
 
 
-def cost_formula(issue_type: str, breakdown: Dict[str, Any] = None) -> str:
+def cost_formula(issue_type: str) -> str:
     formulas = {
         "n_plus_one_query": "cost = queries × $0.0000002/IO",
         "sequential_async": "cost = requests × GB-sec × $0.0000166667",
@@ -49,13 +60,11 @@ def cost_formula(issue_type: str, breakdown: Dict[str, Any] = None) -> str:
 
 @app.callback(invoke_without_command=True)
 def root(
-    ctx: typer.Context,
     version: bool = typer.Option(False, "--version", help="Show version", is_eager=True),
 ):
     if version:
         from deburger import __version__
-
-        console.print(f"deburger v{__version__}")
+        console.print(Align.center(f"\n[bold cyan]🍔 deburger[/bold cyan] [dim]v{__version__}[/dim]\n"))
         raise typer.Exit()
 
 
@@ -83,7 +92,7 @@ def init(
 def check(
     path: str = typer.Argument(".", help="Path to analyze"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed breakdown"),
-    incremental: bool = typer.Option(True, "--incremental/--full", help="Only scan changed files"),
+    incremental: bool = typer.Option(True, help="Only scan changed files"),
     json_output: bool = typer.Option(False, "--json", help="Output results as JSON"),
 ):
     """Scan code and predict cloud costs."""
@@ -165,10 +174,10 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
     )
     table.add_column("file", style="dim", no_wrap=True)
     table.add_column("line", justify="right", style="dim")
-    table.add_column("pattern", style="bold")
-    table.add_column("severity")
-    table.add_column("monthly cost", justify="right", style="yellow")
-    table.add_column("savings", justify="right", style="green")
+    table.add_column("pattern", style="bold", no_wrap=True)
+    table.add_column("severity", no_wrap=True)
+    table.add_column("monthly cost", justify="right", style="yellow", no_wrap=True)
+    table.add_column("savings", justify="right", style="green", no_wrap=True)
 
     for issue in issues:
         color = {
@@ -192,41 +201,41 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
 
     if results:
         console.print()
-        summary = (
-            f"[bold]total waste:[/bold] [red]${results['total_savings']:.2f}/mo[/red]\n"
-            f"[bold]after fixes:[/bold] [green]${results['total_optimized_cost']:.2f}/mo[/green]\n"
-            f"[bold]savings:[/bold] [cyan]{results['savings_percentage']:.0f}%[/cyan]"
-        )
-        if results.get("by_resource_type"):
-            by_res = "\n" + "\n".join(
-                f"  {rt}: [yellow]${v['savings']:.2f}[/yellow] ({v['count']} issue{'s' if v['count'] > 1 else ''})"
-                for rt, v in sorted(results["by_resource_type"].items(), key=lambda x: x[1]["savings"], reverse=True)
-            )
-            summary += f"\n[dim]by resource:[/dim]{by_res}"
+        total_cost = results['total_savings']
+        total_after = results['total_optimized_cost']
+        savings_pct = results['savings_percentage']
 
-        console.print(Panel(summary, title="cost summary", border_style="cyan"))
+        top_text = f"[bold]Monthly Waste:[/bold]  [red]${total_cost:.2f}[/red]  →  [green]${total_after:.2f}[/green]"
+        console.print(Panel(top_text, border_style="cyan", padding=(0, 2)))
+
+        bottom_items = [f"[bold green]Savings: {savings_pct:.0f}%[/bold green]"]
+        if results.get("by_resource_type"):
+            for rt, v in sorted(results["by_resource_type"].items(), key=lambda x: x[1]["savings"], reverse=True):
+                bottom_items.append(f"  • {rt}: [yellow]${v['savings']:.2f}[/yellow] ({v['count']} issue{'s' if v['count'] > 1 else ''})")
+        console.print(Panel("\n".join(bottom_items), border_style="green", padding=(0, 2)))
 
     if verbose:
         console.print()
         for i, issue in enumerate(issues, 1):
             header = Text()
-            header.append(f"  {i}. ", style="dim")
-            header.append(f"{Path(issue.file_path).name}:{issue.line_number} ", style="bold")
+            header.append(f"[{i}/{len(issues)}] ", style="dim cyan")
+            header.append(f"{Path(issue.file_path).name}", style="bold yellow")
+            header.append(f":{issue.line_number} ", style="bright_blue")
             header.append(f"({issue.type.value.replace('_', ' ')})", style="red")
             console.print(header)
 
-            console.print(Panel(
+            info_text = (
                 f"[dim]{issue.explanation}[/dim]\n\n"
-                f"[bold]formula:[/bold] [italic]{cost_formula(issue.type.value)}[/italic]\n"
-                f"[bold]estimated waste:[/bold] [red]${issue.estimated_monthly_cost:.2f}/mo[/red]\n"
-                f"[bold]savings if fixed:[/bold] [green]${issue.savings_monthly:.2f}/mo[/green]"
-                if issue.savings_monthly else "",
-                border_style="dim",
-                padding=(1, 2),
-            ))
+                f"[bold]Formula:[/bold] [italic]{cost_formula(issue.type.value)}[/italic]\n"
+                f"[bold]Monthly waste:[/bold] [red]${issue.estimated_monthly_cost:.2f}[/red]\n"
+                f"[bold]Savings:[/bold] [green]${issue.savings_monthly:.2f}/mo[/green]" if issue.savings_monthly else "[dim]Savings: N/A[/dim]"
+            )
+            console.print(Panel(info_text, border_style="blue", padding=(1, 2)))
 
             if issue.fix_suggestion:
-                console.print(f"  [green]fix:[/green] {issue.fix_suggestion}")
+                fix_text = f"[bold]Suggested Fix:[/bold]\n{issue.fix_suggestion}"
+                console.print(Panel(fix_text, border_style="green", padding=(1, 2)))
+
             console.print()
 
     return True
@@ -236,7 +245,7 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
 def optimize(
     path: str = typer.Argument(".", help="Path to optimize"),
     auto_apply: bool = typer.Option(False, "--auto-apply", help="Apply safe fixes automatically"),
-    dry_run: bool = typer.Option(True, "--dry-run/--apply", help="Preview fixes without applying"),
+    dry_run: bool = typer.Option(True, help="Preview fixes without applying"),
 ):
     """Find and fix expensive code patterns."""
     asyncio.run(_optimize(path, auto_apply, dry_run))
@@ -307,7 +316,13 @@ async def _optimize(path: str, auto_apply: bool, dry_run: bool):
     console.print(table)
 
     total_savings = sum(f.savings_monthly for f in fixes)
-    console.print(f"\n[bold]total potential savings:[/bold] [green]${total_savings:.2f}/mo[/green]")
+    safe_fixes = sum(1 for f in fixes if f.auto_apply_safe)
+
+    summary_text = (
+        f"[bold cyan]Total Potential Savings:[/bold cyan] [green]${total_savings:.2f}/mo[/green]\n"
+        f"[bold cyan]Safe Auto-Fixes:[/bold cyan] [green]{safe_fixes}/{len(fixes)}[/green]"
+    )
+    console.print(f"\n{Panel(summary_text, border_style='green', padding=(1, 2))}")
 
     if auto_apply or not dry_run:
         applier = FixApplier(dry_run=dry_run)
@@ -371,18 +386,26 @@ async def _diff(base: str, head: str):
 
     if issues:
         total_cost = sum(i.estimated_monthly_cost for i in issues)
+        critical = sum(1 for i in issues if i.severity.value == "critical")
 
         panel_text = (
-            f"[red]new issues: {len(issues)}[/red]\n"
-            f"[red]cost impact: +${total_cost:.2f}/mo[/red]"
+            f"[bold red]New Expensive Patterns:[/bold red] {len(issues)} found\n"
+            f"[bold]Cost Impact:[/bold] [red]+${total_cost:.2f}/mo[/red]"
         )
-        console.print(Panel(panel_text, border_style="red"))
+        if critical > 0:
+            panel_text = f"[bold red]CRITICAL:[/bold red] {critical}\n" + panel_text
 
-        for issue in issues:
+        console.print(Panel(panel_text, border_style="red", title="[bold red]PR Analysis[/bold red]"))
+
+        tree = Tree(f"[bold cyan]{len(changed_files)} files changed[/bold cyan]")
+        for issue in sorted(issues, key=lambda x: x.estimated_monthly_cost, reverse=True)[:5]:
             sev_icon = SEVERITY_ICONS.get(issue.severity.value, "")
-            console.print(f"  {sev_icon} [dim]{issue.file_path}:{issue.line_number}[/dim] - {issue.type.value.replace('_', ' ')} ([yellow]${issue.estimated_monthly_cost:.2f}/mo[/yellow])")
+            tree.add(f"{sev_icon} {Path(issue.file_path).name}:{issue.line_number} {issue.type.value.replace('_', ' ')} [yellow]${issue.estimated_monthly_cost:.2f}[/yellow]")
+        if len(issues) > 5:
+            tree.add(f"[dim]... and {len(issues) - 5} more[/dim]")
+        console.print(tree)
     else:
-        console.print("\n[green]✓ no new expensive patterns[/green]")
+        console.print("\n[green]no new expensive patterns[/green]")
 
 
 @app.command()
@@ -491,24 +514,38 @@ async def _blame(path: str, top: int):
     console.print(table)
 
     total = sum(r.total_monthly_cost for r in leaderboard)
-    console.print(f"\n[bold]total waste:[/bold] [red]${total:.2f}/month[/red]")
+
+    medals = ["🥇", "🥈", "🥉"]
+    top_devs = "\n".join(
+        f"{medals[i] if i < 3 else '  '} {r.author}: [red]${r.total_monthly_cost:.2f}[/red]"
+        for i, r in enumerate(leaderboard[:3])
+    )
+    if top_devs:
+        console.print(Panel(top_devs, border_style="yellow", padding=(0, 2)))
+    console.print(Panel(f"[bold][red]Total Waste:[/red] ${total:.2f}/month[/bold]", border_style="red", padding=(0, 2)))
 
 
 @app.command()
 def version():
     """Show version."""
     from deburger import __version__
-    console.print(f"deburger v{__version__}")
+    console.print(f"🍔 deburger v{__version__}")
 
 
 def main():
     try:
         app()
     except KeyboardInterrupt:
-        console.print("\n[yellow]interrupted[/yellow]")
+        console.print("\n[yellow]Interrupted[/yellow]")
         sys.exit(130)
     except Exception as e:
-        console.print(f"[red]error:[/red] {e}")
+        error_panel = Panel(
+            f"[bold red]Error:[/bold red] {e}",
+            border_style="red",
+            padding=(1, 2),
+            title="[bold red]Failed[/bold red]"
+        )
+        console.print(error_panel)
         sys.exit(1)
 
 
