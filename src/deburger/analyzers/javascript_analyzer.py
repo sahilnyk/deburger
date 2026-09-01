@@ -17,7 +17,7 @@ class TypeScriptAnalyzer(BaseAnalyzer):
 
     @property
     def supported_languages(self) -> List[str]:
-        return [".ts", ".tsx"]
+        return [".js", ".jsx", ".ts", ".tsx"]
 
     def analyze(self, file_path: str, code: str, config: dict) -> List[Issue]:
         issues = []

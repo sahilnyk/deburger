@@ -18,7 +18,7 @@ class UnindexedQueryDetector(PatternDetector):
 
     @property
     def supported_extensions(self) -> List[str]:
-        return [".py", ".ts"]
+        return [".py", ".js", ".jsx", ".ts", ".tsx"]
 
     def detect(self, file_path: str, code: str, config: dict) -> List[Issue]:
         issues = []
