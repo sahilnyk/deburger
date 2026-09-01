@@ -19,6 +19,7 @@ app = typer.Typer(
     rich_markup_mode="rich",
 )
 console = Console()
+error_console = Console(stderr=True)
 
 SEVERITY_ICONS = {
     "critical": "[!]",
@@ -103,18 +104,45 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
 
     config = load_config()
 
-    with Progress(
+    progress = Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         console=console,
-    ) as progress:
+        disable=json_output,
+    )
+    with progress:
         task = progress.add_task("scanning code...", total=None)
         scanner = FastScanner(config.to_dict(), max_workers=config.performance["max_workers"])
         issues = await scanner.scan_path(path, incremental=incremental)
         progress.update(task, description=f"found {len(issues)} issues")
 
+        if scanner.errors and not json_output:
+            for scan_error in scanner.errors:
+                error_console.print(
+                    f"[yellow]warning:[/yellow] skipped {scan_error.file_path}: "
+                    f"{scan_error.error}"
+                )
+
         if not issues:
             progress.stop()
+            if json_output:
+                import json
+
+                print(json.dumps({
+                    "issues": [],
+                    "summary": {
+                        "total_issues": 0,
+                        "total_monthly_cost": 0,
+                        "total_optimized_cost": 0,
+                        "total_savings": 0,
+                        "savings_percentage": 0,
+                    },
+                    "warnings": [
+                        {"file": item.file_path, "error": item.error}
+                        for item in scanner.errors
+                    ],
+                }, indent=2))
+                return False
             console.print("\n[green]✓ no expensive patterns found[/green]")
             return False
 
@@ -146,9 +174,15 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
             ],
             "summary": {
                 "total_issues": len(issues),
-                "total_monthly_cost": float(results["total_savings"]) if results else 0,
+                "total_monthly_cost": float(results["total_current_cost"]) if results else 0,
+                "total_optimized_cost": float(results["total_optimized_cost"]) if results else 0,
+                "total_savings": float(results["total_savings"]) if results else 0,
                 "savings_percentage": results["savings_percentage"] if results else 0,
             },
+            "warnings": [
+                {"file": item.file_path, "error": item.error}
+                for item in scanner.errors
+            ],
         }
         print(json.dumps(output, indent=2))
         return True
@@ -195,7 +229,7 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
 
     if results:
         console.print()
-        total_cost = results['total_savings']
+        total_cost = results['total_current_cost']
         total_after = results['total_optimized_cost']
         savings_pct = results['savings_percentage']
 
@@ -222,7 +256,11 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
                 f"[dim]{issue.explanation}[/dim]\n\n"
                 f"[bold]Formula:[/bold] [italic]{cost_formula(issue.type.value)}[/italic]\n"
                 f"[bold]Monthly waste:[/bold] [red]${issue.estimated_monthly_cost:.2f}[/red]\n"
-                f"[bold]Savings:[/bold] [green]${issue.savings_monthly:.2f}/mo[/green]" if issue.savings_monthly else "[dim]Savings: N/A[/dim]"
+                + (
+                    f"[bold]Savings:[/bold] [green]${issue.savings_monthly:.2f}/mo[/green]"
+                    if issue.savings_monthly
+                    else "[dim]Savings: N/A[/dim]"
+                )
             )
             console.print(Panel(info_text, border_style="blue", padding=(1, 2)))
 
@@ -543,7 +581,7 @@ def main():
             padding=(1, 2),
             title="[bold red]Failed[/bold red]"
         )
-        console.print(error_panel)
+        error_console.print(error_panel)
         sys.exit(1)
 
 
