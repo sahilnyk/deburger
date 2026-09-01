@@ -28,7 +28,7 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
-console = Console(width=max(Console().width or 100, 100))
+console = Console()
 
 SEVERITY_ICONS = {
     "critical": "🔴" if not is_windows() else "●",
