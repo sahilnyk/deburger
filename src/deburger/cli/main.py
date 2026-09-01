@@ -92,7 +92,11 @@ def init(
 def check(
     path: str = typer.Argument(".", help="Path to analyze"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed breakdown"),
-    incremental: bool = typer.Option(True, help="Only scan changed files"),
+    incremental: bool = typer.Option(
+        True,
+        "--incremental/--full",
+        help="Scan Git changes only or scan every supported file",
+    ),
     json_output: bool = typer.Option(False, "--json", help="Output results as JSON"),
 ):
     """Scan code and predict cloud costs."""
@@ -245,7 +249,11 @@ async def _check(path: str, verbose: bool, incremental: bool, json_output: bool 
 def optimize(
     path: str = typer.Argument(".", help="Path to optimize"),
     auto_apply: bool = typer.Option(False, "--auto-apply", help="Apply safe fixes automatically"),
-    dry_run: bool = typer.Option(True, help="Preview fixes without applying"),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--apply",
+        help="Preview fixes or write them to disk",
+    ),
 ):
     """Find and fix expensive code patterns."""
     asyncio.run(_optimize(path, auto_apply, dry_run))
