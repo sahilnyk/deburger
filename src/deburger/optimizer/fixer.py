@@ -171,7 +171,7 @@ class CodeFixer:
             fixed_code='\n'.join(fixed_lines),
             explanation=f"converted {len(calls)} sequential awaits to parallel execution",
             confidence=0.95,
-            auto_apply_safe=True,
+            auto_apply_safe=False,
             savings_monthly=issue.savings_monthly or Decimal("0")
         )
 
@@ -214,7 +214,7 @@ class CodeFixer:
             fixed_code='\n'.join(fixed_lines),
             explanation=f"converted {len(calls)} sequential awaits to Promise.all",
             confidence=0.95,
-            auto_apply_safe=True,
+            auto_apply_safe=False,
             savings_monthly=issue.savings_monthly or Decimal("0")
         )
 
