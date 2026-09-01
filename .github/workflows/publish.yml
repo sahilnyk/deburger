@@ -6,10 +6,14 @@ on:
 
 permissions:
   contents: read
+  id-tokens: write
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
+
+    outputs:
+      dist-path: ${{ steps.build.outputs.dist-path }}
 
     steps:
     - uses: actions/checkout@v4
@@ -18,18 +22,56 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
+        cache: 'pip'
 
     - name: Install build tools
-      run: pip install build twine
+      run: pip install "build>=1.0.0" "twine>=4.0.0"
 
     - name: Build package
-      run: python -m build
+      id: build
+      run: |
+        python -m build
+        echo "dist-path=dist" >> $GITHUB_OUTPUT
 
-    - name: Verify package
-      run: twine check dist/*
+    - name: Verify package integrity
+      run: |
+        twine check dist/*
+        ls -lh dist/
 
-    - name: Upload to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: twine upload dist/*
+    - name: Validate dist directory
+      run: |
+        if [ -z "$(ls -A dist/)" ]; then
+          echo "Error: dist/ directory is empty"
+          exit 1
+        fi
+        for file in dist/*; do
+          if [[ "$file" != *.whl && "$file" != *.tar.gz ]]; then
+            echo "Error: Unexpected file in dist/: $file"
+            exit 1
+          fi
+        done
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/deburger
+
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+    - name: Publish to PyPI via OIDC
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/
