@@ -56,7 +56,7 @@ class TestCodeFixer:
         fix = fixer.generate_fix(seq_async_issue, code)
         assert fix is not None
         assert "asyncio.gather" in fix.fixed_code
-        assert fix.auto_apply_safe
+        assert not fix.auto_apply_safe
 
     def test_generates_js_sequential_fix(self, fixer):
         issue = Issue(

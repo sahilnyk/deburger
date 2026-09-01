@@ -2,7 +2,7 @@
 
 import pytest
 from deburger.analyzers.javascript_analyzer import TypeScriptAnalyzer
-from deburger.analyzers.base import IssueType, Severity
+from deburger.analyzers.base import IssueType
 
 
 @pytest.fixture
@@ -45,12 +45,9 @@ class TestSequentialAsync:
 
 
 class TestSupported:
-    def test_ts_tsx(self, analyzer):
-        for ext in [".ts", ".tsx"]:
+    def test_javascript_and_typescript(self, analyzer):
+        for ext in [".js", ".jsx", ".ts", ".tsx"]:
             assert analyzer.can_analyze(f"file{ext}")
-
-    def test_rejects_js(self, analyzer):
-        assert not analyzer.can_analyze("file.js")
 
     def test_rejects_py(self, analyzer):
         assert not analyzer.can_analyze("file.py")
