@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 import yaml
 
 
+class ConfigError(ValueError):
+    """Raised when project configuration cannot be used safely."""
+
+
 DEFAULT_CONFIG = {
     "provider": "aws",
     "region": "us-east-1",
@@ -92,8 +96,11 @@ def load_config(config_path: Optional[str] = None) -> DeburgerConfig:
         file_path = find_config_file()
 
     if file_path and file_path.exists():
-        with open(file_path, 'r') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             file_config = yaml.safe_load(f) or {}
+
+        if not isinstance(file_config, dict):
+            raise ConfigError(f"configuration must be a mapping: {file_path}")
 
         # merge file config into defaults
         if "provider" in file_config:
@@ -127,6 +134,21 @@ def load_config(config_path: Optional[str] = None) -> DeburgerConfig:
     env_workers = os.environ.get("DEBURGER_MAX_WORKERS")
     if env_workers:
         config.performance["max_workers"] = int(env_workers)
+
+    if config.provider not in {"aws", "gcp", "azure"}:
+        raise ConfigError(
+            f"unsupported provider '{config.provider}'; choose aws, gcp, or azure"
+        )
+
+    positive_fields = {
+        "traffic.requests_per_day": config.traffic.get("requests_per_day"),
+        "traffic.avg_duration_ms": config.traffic.get("avg_duration_ms"),
+        "traffic.avg_memory_mb": config.traffic.get("avg_memory_mb"),
+        "performance.max_workers": config.performance.get("max_workers"),
+    }
+    for name, value in positive_fields.items():
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ConfigError(f"{name} must be a positive integer")
 
     return config
 
