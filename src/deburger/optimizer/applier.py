@@ -19,6 +19,7 @@ class FixApplier:
         self.validate = validate
         self.validator = FixValidator() if validate else None
         self.applied_count = 0
+        self._backed_up_files = set()
 
     def apply_fix(self, fix: Fix) -> ApplyResult:
         # validate fix first
@@ -116,6 +117,8 @@ class FixApplier:
     def create_backup(self, file_path: str):
         # create backup before applying
         backup_path = f"{file_path}.deburger-backup"
+        if file_path in self._backed_up_files:
+            return backup_path
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -123,6 +126,7 @@ class FixApplier:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 f.write(content)
 
+            self._backed_up_files.add(file_path)
             return backup_path
         except Exception:
             return None
