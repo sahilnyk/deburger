@@ -16,6 +16,12 @@ class IssueType(Enum):
     MISSING_CACHING = "missing_caching"
     LARGE_RESPONSE = "large_response"
     INEFFICIENT_QUERY = "inefficient_query"
+    S3_IN_LOOP = "s3_in_loop"
+    UNBOUNDED_QUERY = "unbounded_query"
+    MISSING_CONNECTION_POOL = "missing_connection_pool"
+    COLD_START_IMPORT = "cold_start_import"
+    EXPENSIVE_LOGGING = "expensive_logging"
+    UNINDEXED_QUERY = "unindexed_query"
 
 
 class Severity(Enum):

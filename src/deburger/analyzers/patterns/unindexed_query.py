@@ -32,7 +32,7 @@ class UnindexedQueryDetector(PatternDetector):
                 scan_cost = Decimal(monthly_requests) * Decimal("0.000004")
 
                 issues.append(Issue(
-                    type=IssueType.INEFFICIENT_QUERY,
+                    type=IssueType.UNINDEXED_QUERY,
                     severity=Severity.HIGH,
                     file_path=file_path,
                     line_number=i,

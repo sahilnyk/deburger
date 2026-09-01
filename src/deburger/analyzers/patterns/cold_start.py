@@ -75,7 +75,7 @@ class ColdStartDetector(PatternDetector):
         cost = Decimal(cold_starts) * wasted_seconds * memory_gb * Decimal("0.0000166667")
 
         issues.append(Issue(
-            type=IssueType.OVER_PROVISIONED_LAMBDA,
+            type=IssueType.COLD_START_IMPORT,
             severity=Severity.HIGH if total_cold_start_ms > 1000 else Severity.MEDIUM,
             file_path=file_path,
             line_number=first_line,

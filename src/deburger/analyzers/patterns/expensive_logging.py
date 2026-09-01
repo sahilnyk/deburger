@@ -55,7 +55,7 @@ class ExpensiveLoggingDetector(PatternDetector):
 
                     if total_cost > Decimal("10"):
                         issues.append(Issue(
-                            type=IssueType.LARGE_RESPONSE,
+                            type=IssueType.EXPENSIVE_LOGGING,
                             severity=Severity.MEDIUM,
                             file_path=file_path,
                             line_number=loop_log_lines[0],
@@ -85,7 +85,7 @@ class ExpensiveLoggingDetector(PatternDetector):
 
                 if cost > Decimal("50"):
                     issues.append(Issue(
-                        type=IssueType.LARGE_RESPONSE,
+                        type=IssueType.EXPENSIVE_LOGGING,
                         severity=Severity.MEDIUM,
                         file_path=file_path,
                         line_number=1,

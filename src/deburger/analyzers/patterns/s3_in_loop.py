@@ -59,7 +59,7 @@ class S3InLoopDetector(PatternDetector):
                 cost = Decimal(total_s3_calls) * Decimal("0.0000004")
 
                 issues.append(Issue(
-                    type=IssueType.N_PLUS_ONE_QUERY,
+                    type=IssueType.S3_IN_LOOP,
                     severity=Severity.HIGH,
                     file_path=file_path,
                     line_number=i,

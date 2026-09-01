@@ -48,7 +48,7 @@ class ConnectionPoolDetector(PatternDetector):
                 cost = Decimal(monthly_requests) * overhead_seconds * memory_gb * Decimal("0.0000166667")
 
                 issues.append(Issue(
-                    type=IssueType.INEFFICIENT_QUERY,
+                    type=IssueType.MISSING_CONNECTION_POOL,
                     severity=Severity.HIGH,
                     file_path=file_path,
                     line_number=i,

@@ -39,7 +39,7 @@ class UnboundedQueryDetector(PatternDetector):
                 total_cost = transfer_cost + compute_cost
 
                 issues.append(Issue(
-                    type=IssueType.LARGE_RESPONSE,
+                    type=IssueType.UNBOUNDED_QUERY,
                     severity=Severity.CRITICAL,
                     file_path=file_path,
                     line_number=i,
