@@ -4,7 +4,6 @@ import subprocess
 import time
 from pathlib import Path
 from typing import List, Set
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from deburger.analyzers.base import Issue
@@ -23,6 +22,7 @@ class FastScanner:
     def __init__(self, config: dict, max_workers: int = None):
         self.config = config
         self.max_workers = max_workers or min(32, (os.cpu_count() or 1) * 4)
+        self.errors: List[ScanResult] = []
 
     async def scan_path(self, path: str, incremental: bool = True) -> List[Issue]:
         # get files to scan (changed files if incremental)
@@ -33,6 +33,7 @@ class FastScanner:
 
         # scan everything in parallel
         scan_results = await self._scan_files_parallel(files)
+        self.errors = [result for result in scan_results if result.error]
 
         # collect all issues
         all_issues = []
@@ -45,6 +46,9 @@ class FastScanner:
 
     async def _get_files_to_scan(self, path: str, incremental: bool) -> List[Path]:
         path_obj = Path(path)
+
+        if not path_obj.exists():
+            raise FileNotFoundError(f"scan path does not exist: {path}")
 
         if path_obj.is_file():
             return [path_obj]
@@ -127,21 +131,12 @@ class FastScanner:
             return files
 
     async def _scan_files_parallel(self, files: List[Path]) -> List[ScanResult]:
-        loop = asyncio.get_event_loop()
-
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            tasks = [
-                loop.run_in_executor(
-                    executor,
-                    self._scan_file_sync,
-                    str(file_path)
-                )
-                for file_path in files
-            ]
-
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        return [r for r in results if isinstance(r, ScanResult)]
+        results = []
+        for index, file_path in enumerate(files):
+            results.append(self._scan_file_sync(str(file_path)))
+            if index % 50 == 49:
+                await asyncio.sleep(0)
+        return results
 
     def _scan_file_sync(self, file_path: str) -> ScanResult:
         start = time.time()
@@ -162,5 +157,3 @@ class FastScanner:
         except Exception as e:
             elapsed_ms = (time.time() - start) * 1000
             return ScanResult(file_path, [], elapsed_ms, error=str(e))
-
-
