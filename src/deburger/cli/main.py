@@ -450,6 +450,14 @@ def hook(
         console.print("[dim]use --install or --uninstall[/dim]")
 
 
+@app.command(name="hook-check", hidden=True)
+def hook_check():
+    """Run the configured pre-commit policy."""
+    from deburger.hooks.manager import run_hook
+
+    raise typer.Exit(code=run_hook())
+
+
 @app.command(name="pr-comment")
 def pr_comment(
     pr: int = typer.Argument(..., help="PR number"),

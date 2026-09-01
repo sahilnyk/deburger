@@ -1,9 +1,8 @@
 import subprocess
 from pathlib import Path
 
-HOOK_SCRIPT = '''#!/bin/sh
-# deburger pre-commit hook - catches expensive code before it ships
-deburger check --incremental 2>/dev/null
+HOOK_BLOCK = '''# deburger hook start
+deburger hook-check
 
 if [ $? -ne 0 ]; then
     echo ""
@@ -12,22 +11,24 @@ if [ $? -ne 0 ]; then
     echo "use 'git commit --no-verify' to skip"
     exit 1
 fi
+# deburger hook end
 '''
+
+HOOK_SCRIPT = f"#!/bin/sh\n{HOOK_BLOCK}"
 
 
 def get_hooks_dir() -> Path:
     # find git hooks directory
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
+            ["git", "rev-parse", "--git-path", "hooks"],
             capture_output=True,
             text=True,
             timeout=5,
         )
 
         if result.returncode == 0:
-            git_dir = Path(result.stdout.strip())
-            return git_dir / "hooks"
+            return Path(result.stdout.strip())
 
     except Exception:
         pass
@@ -43,16 +44,15 @@ def install_hook():
 
     # don't overwrite existing hook, append
     if hook_path.exists():
-        existing = hook_path.read_text()
+        existing = hook_path.read_text(encoding="utf-8")
         if "deburger" in existing:
             return  # already installed
 
         # append to existing hook
-        with open(hook_path, 'a') as f:
-            f.write("\n\n# deburger cost check\n")
-            f.write("deburger check --incremental\n")
+        with open(hook_path, "a", encoding="utf-8") as f:
+            f.write(f"\n{HOOK_BLOCK}")
     else:
-        hook_path.write_text(HOOK_SCRIPT)
+        hook_path.write_text(HOOK_SCRIPT, encoding="utf-8")
 
     # make executable
     hook_path.chmod(0o755)
@@ -65,7 +65,7 @@ def uninstall_hook():
     if not hook_path.exists():
         return
 
-    content = hook_path.read_text()
+    content = hook_path.read_text(encoding="utf-8")
 
     if "deburger" not in content:
         return
@@ -75,10 +75,12 @@ def uninstall_hook():
         hook_path.unlink()
         return
 
-    # otherwise just remove our lines
-    lines = content.split('\n')
-    new_lines = [line for line in lines if 'deburger' not in line]
-    hook_path.write_text('\n'.join(new_lines))
+    start = content.find("# deburger hook start")
+    end = content.find("# deburger hook end")
+    if start >= 0 and end >= start:
+        end += len("# deburger hook end")
+        cleaned = (content[:start] + content[end:]).strip() + "\n"
+        hook_path.write_text(cleaned, encoding="utf-8")
 
 
 def run_hook() -> int:
