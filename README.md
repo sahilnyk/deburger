@@ -1,82 +1,114 @@
-# deburger 🍔
+# deburger
 
-**Catch expensive cloud code before it ships.** Static analysis that detects costly patterns and estimates your monthly bill impact — fully local, no credentials needed.
+deburger scans source code for patterns that can increase cloud costs. It points to the relevant line, explains the concern, and estimates the possible monthly impact using traffic values from your project configuration.
 
 [![PyPI version](https://img.shields.io/pypi/v/deburger.svg)](https://pypi.org/project/deburger/)
-[![Python](https://img.shields.io/pypi/pyversions/deburger.svg)](https://pypi.org/project/deburger/)
+[![Python versions](https://img.shields.io/pypi/pyversions/deburger.svg)](https://pypi.org/project/deburger/)
 [![License](https://img.shields.io/pypi/l/deburger.svg)](https://pypi.org/project/deburger/)
 
-## Why deburger?
+## Install
 
-> "We found $8K/mo in Lambda waste after running deburger once." — beta user
-
-Every N+1 query, unbounded `SELECT *`, or S3 call in a loop burns money. deburger finds them before they hit prod and **shows you the math** — pricing source, formula, and exact monthly cost.
+deburger supports Python 3.9 and newer.
 
 ```bash
-pip install deburger
-deburger check .
+python -m pip install deburger
 ```
 
-## When to use
-
-| When | What it finds |
-|------|--------------|
-| CI/CD pipeline | Blocks PRs that add expensive patterns |
-| Before deployment | `deburger check` scans changed files via git |
-| Code review | `deburger diff main..feature` shows cost delta |
-| Cost optimization | `deburger optimize --apply` auto-fixes code |
-
-## Quickstart
+Create a configuration file and run your first scan:
 
 ```bash
-# init project config
 deburger init --provider aws
-
-# scan for expensive code
-deburger check .
-
-# get detailed cost breakdown with math
-deburger check -v
-
-# auto-fix what you can
-deburger optimize --apply
+deburger check . --full
 ```
 
-## What it detects
+The first command creates `.deburger.yml`. Review its traffic values before relying on the cost estimates. A project handling one million requests per day should not use the same assumptions as a small internal service.
 
-| Pattern | Cost Impact |
-|---------|-------------|
-| N+1 queries in loops | up to 100x more DB IOs |
-| Sequential async calls | 2-10x slower execution → more compute |
-| S3/storage calls in loops | 10-100x more API requests |
-| Unbounded queries (no LIMIT) | OOM risk + data transfer costs |
-| Missing connection pools | 50ms+ overhead per request |
-| Heavy imports on cold starts | 500ms-2s extra Lambda duration |
-| Expensive logging in loops | CloudWatch costs scale with traffic |
-| Unindexed queries, full scans | DB CPU + IO spikes |
+## What it finds
 
-## Integrations
+deburger currently checks for:
 
-- **CI/CD**: `--json` output, non-zero exit on issues
-- **Git hooks**: `deburger hook --install` to block expensive commits
-- **GitHub PRs**: `deburger pr-comment 42` posts cost breakdown
-- **Cloud providers**: AWS, GCP, Azure pricing models
-- **Languages**: Python (AST), JavaScript/TypeScript (pattern matching)
+- Database queries inside loops
+- Sequential async operations that might run concurrently
+- Storage requests inside loops
+- Queries without a limit or pagination
+- Connections created inside request handlers
+- Heavy imports in serverless handlers
+- High-volume logging patterns
+- Queries that may cause full table scans
 
-## CLI
+Python analysis uses the standard Python syntax tree. JavaScript and TypeScript analysis is pattern based, so complex or generated code may need manual review.
 
-| Command | Description |
-|---------|-------------|
-| `deburger check .` | Scan for expensive patterns |
-| `deburger check -v` | With cost breakdown evidence |
-| `deburger check --json` | Machine-readable for CI |
-| `deburger optimize` | Generate + apply auto-fixes |
-| `deburger diff base..head` | Compare cost impact between branches |
-| `deburger blame .` | Cost leaderboard by developer |
-| `deburger hook --install` | Pre-commit hook |
-| `deburger pr-comment <n>` | GitHub PR cost comment |
-| `deburger init` | Create project config |
+## Main commands
+
+```bash
+# Scan files changed in Git
+deburger check .
+
+# Scan every supported file
+deburger check . --full
+
+# Show formulas and suggested changes
+deburger check . --full --verbose
+
+# Produce JSON for CI
+deburger check . --full --json
+
+# Preview possible code changes
+deburger optimize .
+
+# Apply reviewed changes
+deburger optimize . --apply
+
+# Compare two Git revisions
+deburger diff main HEAD
+deburger diff main..feature
+```
+
+`check` exits with status 1 when it finds an issue and status 0 when it does not. Invalid configuration, missing paths, and other command failures also return a nonzero status with an explanation on standard error.
+
+## Cost estimates
+
+Cost values are estimates, not cloud invoices. They depend on:
+
+- Traffic values in `.deburger.yml`
+- Bundled provider pricing data
+- Rule-specific assumptions such as loop size and request volume
+- The source patterns that static analysis can see
+
+Use the estimates to prioritize investigation. Confirm material savings with production metrics and your provider's current pricing before making financial decisions.
+
+## Safe optimization
+
+`deburger optimize` is a preview by default. `--apply` writes changes and creates a `.deburger-backup` file before modifying each source file.
+
+Generated changes still require review and tests. In particular, sequential async operations can depend on one another even when they look independent. deburger does not apply those changes automatically.
+
+## Git and CI
+
+Install the optional pre-commit check with:
+
+```bash
+deburger hook --install
+```
+
+The hook follows the thresholds in `.deburger.yml`. Remove only the deburger section with:
+
+```bash
+deburger hook --uninstall
+```
+
+For CI, use JSON output and preserve the command's exit status:
+
+```bash
+deburger check . --full --json > deburger-report.json
+```
 
 ## Privacy
 
-Fully local. No code sent anywhere, no API keys, no telemetry.
+Scanning, analysis, and cost calculation run locally. deburger does not send source code, collect telemetry, or require cloud credentials. The `pr-comment` command is the exception: it calls the authenticated GitHub CLI to publish the generated comment.
+
+## More help
+
+See the [user manual](docs/user-manual.md) for configuration, suppression, exit codes, troubleshooting, and command details.
+
+Issues and feature requests are welcome in the [GitHub issue tracker](https://github.com/sahilnyk/deburger/issues).
