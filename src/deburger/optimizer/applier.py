@@ -1,3 +1,6 @@
+import os
+import tempfile
+from pathlib import Path
 from typing import List, Dict
 from dataclasses import dataclass
 
@@ -62,8 +65,7 @@ class FixApplier:
             backup_path = self.create_backup(fix.issue.file_path)
 
             try:
-                with open(fix.issue.file_path, 'w', encoding='utf-8') as f:
-                    f.write(new_content)
+                self._write_atomic(fix.issue.file_path, new_content)
 
                 # validate file after writing
                 if self.validate:
@@ -73,8 +75,7 @@ class FixApplier:
                         if backup_path:
                             with open(backup_path, 'r', encoding='utf-8') as f:
                                 original = f.read()
-                            with open(fix.issue.file_path, 'w', encoding='utf-8') as f:
-                                f.write(original)
+                            self._write_atomic(fix.issue.file_path, original)
 
                         return ApplyResult(
                             file_path=fix.issue.file_path,
@@ -130,3 +131,25 @@ class FixApplier:
             return backup_path
         except Exception:
             return None
+
+    @staticmethod
+    def _write_atomic(file_path: str, content: str) -> None:
+        target = Path(file_path)
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w",
+                encoding="utf-8",
+                dir=target.parent,
+                prefix=f".{target.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temp_file:
+                temp_file.write(content)
+                temp_file.flush()
+                os.fsync(temp_file.fileno())
+                temp_path = Path(temp_file.name)
+            os.replace(temp_path, target)
+        finally:
+            if temp_path and temp_path.exists():
+                temp_path.unlink()
