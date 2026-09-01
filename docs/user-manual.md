@@ -1,190 +1,170 @@
 # deburger user manual
 
-you wrote code. it works. but your cloud bill is $8k and growing.
-deburger looks at your code and tells you *which lines* are burning money — and by how much.
+This manual explains how to run deburger, tune its estimates, use it in automation, and understand its limits.
 
-it does NOT need api keys, cloud credentials, or internet. just your code.
+## Start a project
 
----
-
-## commands
-
-### `deburger init`
-
-creates a `.deburger.yml` so deburger knows your setup.
+Install deburger and create a configuration file:
 
 ```bash
+python -m pip install deburger
+cd your-project
 deburger init --provider aws
 ```
 
-this writes a config file with sensible defaults. you edit it later to match your actual traffic (requests/day, memory, etc).
+Supported providers are `aws`, `gcp`, and `azure`. The command will not overwrite an existing `.deburger.yml` file.
 
-use this once per project.
+Open the generated file and replace the sample traffic values with values that resemble your application. These values directly affect every estimate.
 
----
-
-### `deburger check`
-
-this is the main one. scans your code and dumps out what's costing you.
+## Scan source code
 
 ```bash
+# Scan files changed in Git
 deburger check .
-deburger check src/ --full
-deburger check . -v
+
+# Scan every supported file under src
+deburger check src --full
+
+# Include formulas and suggestions
+deburger check src --full --verbose
 ```
 
-by default it only scans git-changed files (fast). `--full` scans everything.
+Incremental scanning includes staged, unstaged, and untracked files. If Git is unavailable, deburger falls back to a full scan.
 
-the output shows:
-- file + line number
-- what pattern it found (n+1 query, s3 in loop, etc)
-- severity (critical = fix now, low = meh)
-- estimated monthly waste in dollars
-- how much you'd save if you fix it
+A successful scan with no findings exits with status 0. A scan with findings exits with status 1. This makes the command suitable for CI, but it also means a finding is not the same thing as a command failure. Read the JSON summary when your automation needs to distinguish results.
 
-add `-v` and it breaks down the math — what formula it used, what pricing it assumed, so you know the number isn't pulled out of thin air.
+## Use JSON output
 
 ```bash
-# ci/cd friendly
-deburger check . --json
+deburger check . --full --json > deburger-report.json
 ```
 
-exits with code 1 if issues found. pipe to jq or whatever.
+The report contains `issues`, `summary`, and `warnings`. Progress output is disabled in JSON mode. Files that cannot be decoded or read appear in `warnings` instead of being silently ignored.
 
----
+## Configure estimates
 
-### `deburger optimize`
+The generated configuration contains these sections:
 
-tries to auto-fix the expensive patterns it found.
+```yaml
+provider: aws
+region: us-east-1
+traffic:
+  requests_per_day: 100000
+  avg_duration_ms: 1000
+  avg_memory_mb: 1024
+  db_queries_per_request: 10
+  concurrent_connections: 100
+  data_transfer_gb: 100
+performance:
+  max_workers: 32
+  incremental: true
+hooks:
+  fail_on_critical: true
+  max_monthly_cost: 500
+```
+
+Positive traffic and worker values must be integers greater than zero. Invalid provider names and invalid value types stop the command with a useful error.
+
+You can override common settings in CI:
+
+```bash
+export DEBURGER_PROVIDER=aws
+export DEBURGER_REGION=us-east-1
+export DEBURGER_REQUESTS_PER_DAY=250000
+export DEBURGER_MAX_WORKERS=8
+```
+
+## Read a finding
+
+Each finding includes:
+
+- A stable rule type
+- File and line number
+- Severity
+- Estimated monthly cost
+- Estimated savings
+- An explanation and possible fix
+
+The dollar amount is a planning estimate. It is based on bundled prices and configured traffic, plus rule assumptions such as loop size. Confirm important estimates with production measurements and current provider pricing.
+
+## Suppress a false positive
+
+Place `deburger:ignore` on the finding line or directly above it:
+
+```python
+# deburger:ignore: lookup uses a request-local cache
+for item in items:
+    result = db.query(item.id)
+```
+
+Include a short reason. It helps the next reviewer understand why the warning is safe to ignore.
+
+## Preview and apply fixes
 
 ```bash
 deburger optimize .
-deburger optimize . --apply       # actually write the fixes
-deburger optimize . --auto-apply  # only apply safe ones
+deburger optimize . --apply
+deburger optimize . --auto-apply
 ```
 
-it shows you what it wants to change and how confident it is. by default it's dry-run — add `--apply` to actually rewrite files.
+The default is a preview. `--apply` writes reviewed suggestions. `--auto-apply` applies only changes marked safe. At present, async concurrency rewrites require manual review because call order and side effects cannot be inferred reliably.
 
-backups are created as `.deburger-backup` before any write.
+Before each file is changed, deburger creates `<filename>.deburger-backup`. Changes to one file are applied sequentially and written with an atomic replacement. Always run your normal formatter and test suite afterward.
 
----
+## Compare Git revisions
 
-### `deburger diff`
-
-compares two git branches and tells you what new expensive code you're adding.
+Both forms below are supported:
 
 ```bash
+deburger diff main HEAD
 deburger diff main..feature
-deburger diff v1.0..v2.0
 ```
 
-useful in ci/cd or before merging a pr. shows only the cost *delta* — what changed, not everything.
+deburger reads both revisions from Git and reports findings present in the target revision but not the base revision. Deleted files and unchanged findings are not reported as new problems.
 
----
-
-### `deburger blame`
-
-git blame + cost analysis = who's costing the company money.
-
-```bash
-deburger blame .
-deburger blame src/ --top 3
-```
-
-groups issues by author, sorted by total monthly cost. great for team dashboards or friday afternoon banter.
-
----
-
-### `deburger hook`
-
-installs a git pre-commit hook that runs deburger before every commit.
+## Install the Git hook
 
 ```bash
 deburger hook --install
 deburger hook --uninstall
 ```
 
-if it finds critical-cost code, the commit is blocked. use `git commit --no-verify` to skip.
+The hook follows `hooks.fail_on_critical` and `hooks.max_monthly_cost`. Installation respects Git's configured hooks directory and keeps unrelated hook content. Uninstallation removes only the marked deburger block.
 
----
-
-### `deburger pr-comment`
-
-posts a cost-breakdown comment on a github pr.
+## Comment on a pull request
 
 ```bash
-deburger pr-comment 42
+deburger pr-comment 42 --base main
 ```
 
-requires the `gh` cli to be installed and authenticated.
+This command requires the GitHub CLI, an authenticated GitHub account, and network access. Review the generated comment shown in the terminal if publishing fails.
 
----
+## Supported files
 
-### `deburger version`
+- Python: `.py`, analyzed with the Python syntax tree
+- JavaScript: `.js` and `.jsx`, analyzed with pattern matching
+- TypeScript: `.ts` and `.tsx`, analyzed with pattern matching
 
-```bash
-deburger version
-deburger --version
-```
+Pattern matching can miss complex nesting and can report false positives in unusual syntax. Treat JavaScript and TypeScript results as review prompts, not proof of a defect.
 
-prints `deburger v1.0.1` or whatever.
+## Troubleshooting
 
----
+### No files were scanned
 
-## config (`.deburger.yml`)
+Run with `--full`. The default mode scans only Git changes. Also check the `ignore` configuration and confirm that the path exists.
 
-you probably want to tweak the traffic numbers so cost estimates match your actual usage:
+### A source file was skipped
 
-```yaml
-provider: aws
-region: us-east-1
-traffic:
-  requests_per_day: 100000     # how many requests your app handles
-  avg_duration_ms: 1000        # average function duration
-  avg_memory_mb: 1024          # average memory per function
-  db_queries_per_request: 10   # queries per request on average
-```
+Run without `--json` to see warnings on standard error, or inspect the JSON `warnings` array. Files must be readable as UTF-8 source code.
 
-these numbers directly affect the dollar amounts deburger shows. if you have 1M req/day instead of 100k, your costs are 10x higher.
+### Estimates look too high
 
----
+Check `requests_per_day`, memory, duration, and query counts in `.deburger.yml`. The generated values are examples, not measurements of your application.
 
-## suppressing false positives
+### Terminal output is hard to read
 
-put `deburger:ignore` on the line above or same line:
+Rich output adapts to the terminal width. Set the standard `NO_COLOR` environment variable when your terminal or log viewer should not receive color codes.
 
-```python
-# deburger:ignore
-for item in items:
-    result = db.query(item.id)  # this is fine, it's cached
-```
+## Privacy
 
-deburger skips those lines.
-
----
-
-## what each pattern means
-
-| pattern | what it looks for | why it costs |
-|---------|------------------|--------------|
-| n+1 query | db query inside a for loop | each iteration = one db call. 500 items = 500 queries instead of 1. |
-| sequential async | `await` calls one after another | each waits for previous to finish. parallel = faster = less compute time. |
-| s3 in loop | s3 get/put inside a loop | 100 s3 api calls instead of 1 batch. s3 charges per request. |
-| unbounded query | `.all()` or `SELECT *` without limit | returns entire table. as data grows, this gets slower and more expensive. |
-| missing pool | new db connection per request | opening a connection takes ~50ms. with a pool you reuse them. |
-| cold start | heavy imports at top level of lambda | pandas, torch, etc add 500ms-2s to cold starts. lazy import = faster. |
-| expensive logging | logging inside loops | cloudwatch charges by volume. logging 100k times = real money. |
-| unindexed query | filter on columns without indexes | full table scan on every request. indexes = cheap scans. |
-
----
-
-## supported languages
-
-- **python** — ast-based. walks the syntax tree, knows exactly what's a loop, what's a db call.
-- **typescript** (`.ts`, `.tsx`) — regex-based line scanner. catches the same patterns as python but won't handle deeply nested or dynamic code.
-
----
-
-## privacy
-
-deburger never sends your code anywhere. no telemetry, no api calls, no "call home". pricing data is hardcoded for each cloud provider.
+Normal scans are local and do not require credentials or network access. Source code is not uploaded and telemetry is not collected. Commands that explicitly publish through the GitHub CLI are the only networked workflow.
